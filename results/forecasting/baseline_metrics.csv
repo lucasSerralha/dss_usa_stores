@@ -1,0 +1,5 @@
+Store,Model,MAE,RMSE
+Baltimore,Seasonal Naive,8732.53,15047.92
+Lancaster,Seasonal Naive,13674.46,23524.68
+Philadelphia,Seasonal Naive,15360.24,25902.76
+Richmond,Seasonal Naive,5017.82,8290.55
