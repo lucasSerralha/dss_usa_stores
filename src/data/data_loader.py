@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+from data_cleaning import clean_data
 
 def load_and_merge_data(raw_data_path, processed_data_path):
     """
@@ -15,10 +16,13 @@ def load_and_merge_data(raw_data_path, processed_data_path):
         
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
-            
-            # Adiciona a coluna com o nome da loja para não perdermos a rastreabilidade
+
+            # Aplicar limpeza individual
+            df = clean_data(df)
+
+            # Adicionar identificador
             df['Store'] = store.capitalize()
-            
+
             all_data.append(df)
         else:
             print(f"Aviso: Ficheiro não encontrado - {file_path}")
