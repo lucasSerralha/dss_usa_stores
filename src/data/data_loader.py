@@ -31,10 +31,6 @@ def load_and_merge_data(raw_data_path, processed_data_path):
     if all_data:
         merged_df = pd.concat(all_data, ignore_index=True)
         
-        # --- PONTO DE INTEGRAÇÃO ---
-        # importar e chamar aqui a função de limpeza:
-        # merged_df = clean_data(merged_df)
-        
         # Guarda o resultado unificado
         # Cria a pasta caso não exista
         os.makedirs(processed_data_path, exist_ok=True) 
