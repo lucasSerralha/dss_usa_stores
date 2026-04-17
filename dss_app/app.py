@@ -2,12 +2,22 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import sys
+
+# 0. Configurações de Pathing Seguro para importação do motor de otimização
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'))
+if src_path not in sys.path:
+    sys.path.append(src_path)
+
+from optimization.nsga2_model import TiaposeOptimization
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.optimize import minimize
 
 # Configuração da página
 st.set_page_config(page_title="TIAPOSE - DSS", layout="wide")
 
 st.title("📊 Sistema Inteligente de Apoio à Decisão (DSS)")
-st.markdown("*(Integração Fase 1: Histórico & Avaliação de Forecasting)*")
+st.markdown("*(Integração Fase 2: Forecasting & Otimização Multi-Objetivo 3D)*")
 
 # Funções de carregamento de dados com cache para otimizar velocidade
 @st.cache_data
@@ -83,6 +93,58 @@ if df_history is not None:
             st.warning(f"Sem dados de avaliação para a loja {loja_selecionada} no relatório atual.")
     else:
         st.error("⚠️ Ficheiro 'final_model_report.csv' não encontrado. Garante que o pipeline do António foi executado.")
+
+    st.markdown("---")
+    
+    # --- SECÇÃO 3: OTIMIZAÇÃO DE ESCALAS (CENÁRIO 3) ---
+    st.header("🎯 Simulador de Escalas (Fronteira de Pareto 3D)")
+    st.markdown("Executa a otimização multi-objetivo para encontrar o equilíbrio entre **Lucro**, **Dimensão da Equipa** e **Restrições Operacionais**.")
+
+    if st.button("🚀 Executar Simulação de Escalas (NSGA-II)"):
+        with st.spinner("O algoritmo genético está a explorar as melhores combinações..."):
+            # 1. Selecionar os últimos 7 dias para simular uma janela de planeamento
+            df_slice = df_loja.sort_values('Date').tail(7)
+            
+            if len(df_slice) == 7:
+                forecast_customers = df_slice['Num_Customers'].tolist()
+                forecast_is_weekend = df_slice['IsWeekend'].tolist()
+
+                # 2. Configurar o Problema de Otimização (Parâmetros leves para Web)
+                problem = TiaposeOptimization(loja_selecionada, forecast_customers, forecast_is_weekend)
+                algorithm = NSGA2(pop_size=20)
+                
+                # Execução do algoritmo
+                res = minimize(problem, algorithm, ('n_gen', 15), seed=1, verbose=False)
+
+                # 3. Preparação do DataFrame 3D para o Plotly
+                # Pymoo Minimiza F1 (Lucro Neg), F2 (Staff), F3 (Penalização)
+                df_pareto = pd.DataFrame(res.F, columns=['f1', 'f2', 'f3'])
+                df_pareto['Lucro Projetado ($)'] = df_pareto['f1'] * -1
+                df_pareto['Staff Total (Pessoas)'] = df_pareto['f2']
+                df_pareto['Penalização (Score)'] = df_pareto['f3']
+
+                # 4. Geração do Gráfico 3D Interativo
+                fig_3d = px.scatter_3d(
+                    df_pareto, 
+                    x='Staff Total (Pessoas)', 
+                    y='Penalização (Score)', 
+                    z='Lucro Projetado ($)',
+                    color='Lucro Projetado ($)',
+                    title=f"Fronteira de Pareto 3D - Loja {loja_selecionada.capitalize()}",
+                    labels={
+                        'Staff Total (Pessoas)': 'Staff Total (Pessoas)', 
+                        'Penalização (Score)': 'Penalização (Score)', 
+                        'Lucro Projetado ($)': 'Lucro Projetado ($)'
+                    },
+                    template='plotly_white',
+                    color_continuous_scale='Viridis'
+                )
+                
+                st.plotly_chart(fig_3d, use_container_width=True)
+                st.success(f"✅ Otimização concluída! Foram identificadas {len(df_pareto)} soluções ótimas.")
+                st.info("💡 **Dica:** Roda o gráfico 3D com o rato para veres o 'compromisso' entre os três objetivos.")
+            else:
+                st.warning("⚠️ Dados históricos insuficientes para simular uma janela de 7 dias.")
 
 else:
     st.error("⚠️ Ficheiro de dados históricos não encontrado na pasta 'data/processed/'.")
