@@ -28,26 +28,20 @@ class TiaposeOptimization(ElementwiseProblem):
         # Limite Superior: Desconto 30%, Max 15 Peritos, Max 15 Juniores (ajustável)
         xu = np.array([0.30, 15, 15] * 7)
         
-        # Inicializamos o problema com 2 Objetivos (n_obj=2)
-        super().__init__(n_var=21, n_obj=2, n_ieq_constr=0, xl=xl, xu=xu)
+        # Inicializamos o problema com 3 Objetivos (n_obj=3 - Cenário 3)
+        super().__init__(n_var=21, n_obj=3, n_ieq_constr=0, xl=xl, xu=xu)
 
     def _evaluate(self, x, out, *args, **kwargs):
-        # OBJETIVO 1: Maximizar Lucro (o teu wrapper já devolve o valor negativo para minimizar)
-        f1 = optimize_weekly_wrapper(
+        # Chamada ao wrapper que devolve os 3 objetivos calculados (Cenário 3)
+        f1, f2, f3 = optimize_weekly_wrapper(
             decision_vars=x,
             store=self.store,
             forecast_customers=self.forecast_customers,
             forecast_is_weekend=self.forecast_is_weekend
         )
         
-        # OBJETIVO 2: Minimizar o número total de empregados alocados na semana
-        # Extraímos apenas as horas (hr_x e hr_j) da lista de 21 variáveis
-        total_hr_x = sum(x[1::3]) # Pega nos índices 1, 4, 7...
-        total_hr_j = sum(x[2::3]) # Pega nos índices 2, 5, 8...
-        f2 = total_hr_x + total_hr_j
-        
-        # Devolvemos as pontuações dos dois objetivos
-        out["F"] = [f1, f2]
+        # Alocação dos 3 objectivos no Pymoo
+        out["F"] = [f1, f2, f3]
 
 if __name__ == "__main__":
     print("--- A iniciar a Otimização Multi-Objetivo (NSGA-II) ---")
