@@ -1,57 +1,55 @@
-# 🇺🇸 USA Stores Sales Forecasting - Projeto DSS 2026
+# 🇺🇸 USA Stores Sales Forecasting & Optimization - DSS 2026
 
-Este repositório contém um Sistema Inteligente de Apoio à Decisão (DSS) para a previsão e otimização de vendas em quatro localizações de retalho nos Estados Unidos: **Baltimore, Lancaster, Philadelphia e Richmond**.
-
-O projeto foi estruturado com uma arquitetura modular e profissional, focada em escalabilidade e reprodutibilidade científica (Target: 20/20).
+Este repositório contém um **Sistema Inteligente de Apoio à Decisão (DSS)** de alto desempenho para a previsão e otimização de vendas em quatro localizações estratégicas nos Estados Unidos: **Baltimore, Lancaster, Philadelphia e Richmond**.
 
 ---
 
-## 🏗️ Arquitetura do Sistema (Estrutura Sénior)
+## 🏗️ Arquitetura do Sistema 
 
-O projeto está organizado em domínios lógicos para facilitar a manutenção e a integração entre equipas:
+O sistema segue uma arquitetura modular que separa a preparação de dados, o motor de inteligência e a interface de decisão:
 
-### 📁 `src/` - Motor de Lógica Central
-*   **`data/preparation.py`**: Limpeza científica de dados, tratamento de outliers (Clipping 1%-99%), interpolação linear de valores em falta e engenharia de atributos (lags, médias móveis, feriados).
-*   **`forecasting/trainer.py`**: Módulo de treino comparativo que avalia 5 modelos distintos simultaneamente e gera métricas de erro (MAE, RMSE, MAPE).
-*   **`optimization/nsga2_model.py`**: Algoritmo Genético (NSGA-II) para a fase de otimização de staff e lucro (W5).
-*   **`utils/profit_logic.py`**: Lógica de negócio, custos de RH e cálculo de margens de lucro.
+### 📁 `src/` - Núcleo de Inteligência
+*   **`data/preparation.py`**: Limpeza científica de dados, tratamento de outliers e engenharia de atributos avançada (Lags dinâmicos, médias móveis e contexto de feriados).
+*   **`forecasting/trainer.py`**: Motor de treino multi-algoritmo capaz de avaliar modelos clássicos (ARIMAX, Holt-Winters) e Machine Learning (Random Forest, Prophet).
+*   **`optimization/nsga2_model.py`**: Algoritmo Genético de vanguarda (NSGA-II) para a fase de decisão ótima (Staffing vs Profit).
 
-### 📁 `results/` - Galeria de Resultados Profissionais
-*   **`00_Master_Summary`**: Relatórios consolidados e gráficos comparativos globais.
-*   **`01_EDA_Gallery`**: Análises estatísticas, correlações e decomposição sazonal.
-*   **`02_Forecasting_Report`**: Gráficos detalhados de "Real vs Previsto" organizados por loja.
-
-### 📁 `dss_app/` - Dashboard de Visualização
-*   Aplicação interativa em **Streamlit** para visualização rápida da performance dos modelos e tendências de negócio.
+### 📁 `results/` - Repositório de Evidências
+*   Organizado por **Cenários de Experimentação**, permitindo comparar como diferentes conjuntos de variáveis afetam a fidedignidade da previsão.
 
 ---
 
-## 📊 Modelos Integrados (Forecasting)
+## 🧪 Suíte de Experimentação Científica
 
-O sistema avalia e compara automaticamente as seguintes abordagens:
-1.  **Seasonal Naive**: Referência base baseada em ciclos semanais.
-2.  **Linear Regression**: Modelo estatístico multivariado de base.
-3.  **Random Forest**: Aprendizagem automática não-linear (Ensemble).
-4.  **Holt-Winters**: Suavização exponencial tripla com sazonalidade (ETS).
-5.  **Prophet (Meta)**: Modelo Bayesiano de última geração para séries temporais.
+Diferente de abordagens básicas, este sistema avalia automaticamente três cenários de variáveis para encontrar a máxima fidedignidade:
+1.  **Cenário A (Temporal Base)**: Focado em padrões cíclicos puramente históricos.
+2.  **Cenário B (Sales Dynamics)**: Integra a dinâmica de curto prazo (ontem) e persistência de dados.
+3.  **Cenário C (Context Expert)**: Integra o contexto total de negócio (Promoções, Eventos Locais e Feriados).
 
 ---
 
-## 🚀 Como Executar o Sistema
-
-### 1. Correr o Pipeline Mestre
-Para processar os dados e gerar todas as previsões e relatórios:
-```powershell
-python main_pipeline.py
-```
-
-### 2. Lançar o Dashboard
-Para visualizar os resultados de forma interativa:
-```powershell
-streamlit run dss_app/app.py
-```
+## 📈 Modelos Integrados
+*   **ARIMAX**: Modelo estatístico clássico que utiliza variáveis exógenas (Promoções) para ajustar a série temporal.
+*   **Prophet (Meta)**: Abordagem Bayesiana robusta a anomalias e feriados complexos.
+*   **Random Forest & Linear Regression**: Abordagem de Machine Learning para capturar correlações não lineares.
+*   **Holt-Winters**: Suavização exponencial tripla para padrões puramente sazonais.
 
 ---
 
-## 📅 Estado do Projeto
-Atualmente, o sistema concluiu a fase de **Forecasting (W4)** com sucesso, apresentando uma estrutura de dados higienizada e pronta para a **Fase de Otimização (W5)**, onde utilizaremos algoritmos evolutivos para maximizar a rentabilidade das lojas.
+## 💎 Dashboard (Streamlit)
+O sistema inclui uma interface de visualização interativa (Plotly) que oferece:
+*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências e IA.
+*   **Análise de Resíduos**: Visualização estatística para validar a honestidade dos modelos.
+*   **XAI (Explainable AI)**: Gráficos de importância de variáveis para explicar os drivers do negócio.
+*   **KPI Financeiro**: Estimativa de poupança financeira comparando a IA com o baseline.
+
+---
+
+## 🚀 Como Executar
+
+1.  **Motor de Cálculo**: `python main_pipeline.py` (Processa e gera todos os relatórios).
+2.  **Interface DSS**: `streamlit run dss_app/app.py` (Lança o dashboard interativo).
+
+---
+
+## 📅 Próximos Passos (Fase Atual)
+Após a conclusão da fase de Previsão, o sistema está agora focado na **Otimização Multi-Objetivo**, utilizando os modelos treinados para determinar o número ideal de funcionários que minimiza custos e maximiza o lucro esperado por loja.
