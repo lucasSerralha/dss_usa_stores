@@ -75,6 +75,56 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
 
     logger.info(f"  [{store_name}] Galeria de resultados profissionais gerada em: {output_dir}")
 
+def train_sarimax(train_df, test_df):
+    """
+    Treina o modelo SARIMAX com variáveis exógenas e parametrização de segurança.
+    Garante que os dados são numéricos e preenchidos, evitando falhas de convergência.
+    """
+    # 1. Seleção e Limpeza de Variáveis Exógenas (Critério de Especialista)
+    exo_cols = ['Pct_On_Sale', 'is_weekend', 'TouristEvent']
+    
+    def prepare_exog(df):
+        exog = df[exo_cols].copy()
+        
+        # Tratamento de strings (ex: 'Yes'/'No' -> 1/0) para TouristEvent
+        if 'TouristEvent' in exog.columns and exog['TouristEvent'].dtype == object:
+            exog['TouristEvent'] = exog['TouristEvent'].map({'Yes': 1, 'No': 0, '0': 0, '1': 1})
+        
+        # Conversão explícita para float e preenchimento de NaNs com 0 para estabilidade
+        return exog.astype(float).fillna(0)
+
+    exog_train = prepare_exog(train_df)
+    exog_test = prepare_exog(test_df)
+    
+    y_train = train_df['y'].astype(float)
+    y_test = test_df['y'].astype(float)
+    
+    # 2. Configuração do Modelo com Fallback Robusto (1,1,1)(1,1,1)7
+    # Desativamos enforce_stationarity e enforce_invertibility para dados reais ruidosos
+    model = SARIMAX(
+        y_train, 
+        exog=exog_train, 
+        order=(1,1,1), 
+        seasonal_order=(1,1,1,7),
+        enforce_stationarity=False,
+        enforce_invertibility=False
+    )
+    
+    # Ajuste silencioso (disp=False) para o pipeline principal
+    results = model.fit(disp=False)
+    
+    # 3. Geração de Previsões e Cálculo de Métricas Consistentes
+    y_pred = results.forecast(steps=len(y_test), exog=exog_test)
+    y_pred_vals = y_pred.values
+    
+    metrics = {
+        'MAE': mean_absolute_error(y_test, y_pred_vals),
+        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_vals)),
+        'MAPE': calculate_mape(y_test, y_pred_vals)
+    }
+    
+    return metrics, y_pred_vals
+
 def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_features=None, experiment_name='Default'):
     """
     Core do Pipeline: Treina e compara múltiplos modelos de forecasting.
@@ -194,25 +244,16 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     except Exception as e:
         logger.error(f"  [{store_name}] Falha no Prophet: {e}")
 
-    # 6. ARIMAX (AutoRegressive Integrated Moving Average with Exogenous - Novo Requisito Prof.)
+    # 6. SARIMAX (Nova Implementação Robusta - Requisito Prof.)
     try:
-        # Usamos SARIMAX com sazonalidade semanal (7 dias) e variáveis exógenas
-        exog_train = train_df[features]
-        exog_test = test_df[features]
-        
-        # Ordem (1,1,1) e Sazonal (1,1,1,7) como ponto de partida robusto
-        arimax = SARIMAX(y_train, exog=exog_train, order=(1,1,1), seasonal_order=(1,1,1,7)).fit(disp=False)
-        y_pred_arimax = arimax.forecast(steps=len(y_test), exog=exog_test)
-        
+        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df)
         store_metrics.append({
-            'Model': 'ARIMAX',
-            'MAE': mean_absolute_error(y_test, y_pred_arimax),
-            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_arimax)),
-            'MAPE': calculate_mape(y_test, y_pred_arimax)
+            'Model': 'SARIMAX',
+            **metrics_sarimax
         })
-        plot_data['ARIMAX'] = y_pred_arimax.values
+        plot_data['SARIMAX'] = y_pred_sarimax
     except Exception as e:
-        logger.error(f"  [{store_name}] Falha no ARIMAX: {e}")
+        logger.error(f"  [{store_name}] Falha no SARIMAX: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
     results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
