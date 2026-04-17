@@ -1,46 +1,55 @@
-# 🇺🇸 USA Stores Sales Forecasting - DSS Project 2026
+# 🇺🇸 USA Stores Sales Forecasting & Optimization - DSS 2026
 
-Este repositório contém o sistema completo de previsão de vendas para quatro lojas de retalho nos Estados Unidos (Baltimore, Lancaster, Philadelphia e Richmond). O projeto foi desenvolvido como parte de um Sistema Inteligente de Apoio à Decisão (DSS), focando-se em técnicas avançadas de Ciência de Dados e Forecasting Multivariado.
-
----
-
-## 🏗️ Arquitetura do Projeto ("Lean Architecture")
-O projeto utiliza uma estrutura modular e profissional para facilitar o desenvolvimento e a manutenção:
-
-- **`data/`**: Armazenamento de dados brutos (`raw`) e dados limpos e processados (`processed`).
-- **`src/`**: Motor lógico centralizado:
-    - `preparation.py`: Limpeza científica (tratamento de outliers via clipping 1%-99%), engenharia de variáveis (feriados dos EUA, lags semanais e médias móveis).
-    - `trainer.py`: Módulo de treino comparativo com avaliação multi-modelo e geração automática de gráficos.
-    - `utils/`: Funções utilitárias partilhadas.
-- **`notebooks/`**: Relatórios de investigação técnica (`Research_&_Discovery.ipynb`) com justificações estatísticas (ACF, Boxplots).
-- **`main_pipeline.py`**: Orquestrador único que executa o fluxo completo do sistema.
+Este repositório contém um **Sistema Inteligente de Apoio à Decisão (DSS)** de alto desempenho para a previsão e otimização de vendas em quatro localizações estratégicas nos Estados Unidos: **Baltimore, Lancaster, Philadelphia e Richmond**.
 
 ---
 
-## 📊 Modelagem e Forecasting (W1 - W4)
-O sistema avalia cinco abordagens distintas para garantir a maior precisão possível (H=7 dias):
+## 🏗️ Arquitetura do Sistema 
 
-1.  **Seasonal Naive (Baseline)**: Previsão baseada no mesmo dia da semana anterior.
-2.  **Linear Regression**: Modelo estatístico multivariado base.
-3.  **Random Forest**: Algoritmo de aprendizagem automática não-linear (Ensemble).
-4.  **Holt-Winters (ETS)**: Suavização exponencial avançada com sazonalidade.
-5.  **Prophet (Meta)**: Modelo bayesiano multivariado robusto a feriados e tendências.
+O sistema segue uma arquitetura modular que separa a preparação de dados, o motor de inteligência e a interface de decisão:
 
-**Métricas de Performance:** MAE (Mean Absolute Error), RMSE (Root Mean Squared Error) e MAPE.
+### 📁 `src/` - Núcleo de Inteligência
+*   **`data/preparation.py`**: Limpeza científica de dados, tratamento de outliers e engenharia de atributos avançada (Lags dinâmicos, médias móveis e contexto de feriados).
+*   **`forecasting/trainer.py`**: Motor de treino multi-algoritmo capaz de avaliar modelos clássicos (ARIMAX, Holt-Winters) e Machine Learning (Random Forest, Prophet).
+*   **`optimization/nsga2_model.py`**: Algoritmo Genético de vanguarda (NSGA-II) para a fase de decisão ótima (Staffing vs Profit).
+
+### 📁 `results/` - Repositório de Evidências
+*   Organizado por **Cenários de Experimentação**, permitindo comparar como diferentes conjuntos de variáveis afetam a fidedignidade da previsão.
+
+---
+
+## 🧪 Suíte de Experimentação Científica
+
+Diferente de abordagens básicas, este sistema avalia automaticamente três cenários de variáveis para encontrar a máxima fidedignidade:
+1.  **Cenário A (Temporal Base)**: Focado em padrões cíclicos puramente históricos.
+2.  **Cenário B (Sales Dynamics)**: Integra a dinâmica de curto prazo (ontem) e persistência de dados.
+3.  **Cenário C (Context Expert)**: Integra o contexto total de negócio (Promoções, Eventos Locais e Feriados).
+
+---
+
+## 📈 Modelos Integrados
+*   **ARIMAX**: Modelo estatístico clássico que utiliza variáveis exógenas (Promoções) para ajustar a série temporal.
+*   **Prophet (Meta)**: Abordagem Bayesiana robusta a anomalias e feriados complexos.
+*   **Random Forest & Linear Regression**: Abordagem de Machine Learning para capturar correlações não lineares.
+*   **Holt-Winters**: Suavização exponencial tripla para padrões puramente sazonais.
+
+---
+
+## 💎 Dashboard (Streamlit)
+O sistema inclui uma interface de visualização interativa (Plotly) que oferece:
+*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências e IA.
+*   **Análise de Resíduos**: Visualização estatística para validar a honestidade dos modelos.
+*   **XAI (Explainable AI)**: Gráficos de importância de variáveis para explicar os drivers do negócio.
+*   **KPI Financeiro**: Estimativa de poupança financeira comparando a IA com o baseline.
 
 ---
 
 ## 🚀 Como Executar
-Para limpar os dados, treinar todos os modelos, gerar o relatório master e os gráficos de previsão, basta correr:
-```powershell
-python main_pipeline.py
-```
 
-Os resultados serão gerados em:
-- **Relatório:** `data/processed/final_model_report.csv`
-- **Gráficos:** `data/processed/plots/`
+1.  **Motor de Cálculo**: `python main_pipeline.py` (Processa e gera todos os relatórios).
+2.  **Interface DSS**: `streamlit run dss_app/app.py` (Lança o dashboard interativo).
 
 ---
 
-## 📅 Próximos Passos
-O projeto encontra-se atualmente na transição para a **Fase de Otimização (W5-W6)**, onde as previsões geradas serão utilizadas para maximizar os lucros através da alocação eficiente de recursos humanos e gestão de promoções.
+## 📅 Próximos Passos (Fase Atual)
+Após a conclusão da fase de Previsão, o sistema está agora focado na **Otimização Multi-Objetivo**, utilizando os modelos treinados para determinar o número ideal de funcionários que minimiza custos e maximiza o lucro esperado por loja.
