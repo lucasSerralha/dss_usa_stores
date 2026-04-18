@@ -81,7 +81,6 @@ def calculate_weekly_profit(store, weekly_plan):
     final_profit = total_sales - total_hr_costs - fixed_cost
     
     return final_profit
-    
 
 def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_is_weekend):
     """
@@ -91,8 +90,12 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
                    Estrutura: [pr1, hr_x1, hr_j1, pr2, hr_x2, hr_j2, ... até ao dia 7]
     forecast_customers: Lista com os 7 valores previstos pelos modelos de Forecasting.
     forecast_is_weekend: Lista de 7 booleanos [True, False, ...] indicando o calendário.
+    
+    RETORNA: (Lucro_Invertido, Total_Staff, Penalizacao_Semana)
     """
     weekly_plan = []
+    total_staff = 0
+    penalizacao_semana = 0
     
     for i in range(7):
         # 1. Extrair as 3 variáveis do dia 'i' do vetor plano
@@ -101,14 +104,21 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
         hr_j_raw = decision_vars[(i * 3) + 2]
         
         # 2. Impor restrições de negócio (Clipping e Arredondamento)
-        # O pr tem de estar entre 0.00 e 0.30
         pr_clean = max(0.0, min(0.30, pr_raw))
-        
-        # RH não podem ser números quebrados nem negativos
         hr_x_clean = max(0, int(round(hr_x_raw)))
         hr_j_clean = max(0, int(round(hr_j_raw)))
         
-        # 3. Montar o dicionário do dia
+        # Cálculo do Staff Diário para os novos Objetivos e Penalizações
+        staff_dia = hr_x_clean + hr_j_clean
+        total_staff += staff_dia
+        
+        # Lógica de Penalização (Cenário 3): Dias úteis com mais de 8 funcionários
+        if not forecast_is_weekend[i]:
+            if staff_dia > 8:
+                extra_staff = staff_dia - 8
+                penalizacao_semana += (extra_staff * 1000)
+        
+        # 3. Montar o dicionário do dia para o cálculo do lucro
         day_data = {
             'is_weekend': forecast_is_weekend[i],
             'customers': forecast_customers[i],
@@ -121,53 +131,40 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
     # 4. Calcular o lucro real usando a tua lógica original
     profit = calculate_weekly_profit(store, weekly_plan)
     
-    # NOTA CRÍTICA: A maioria das bibliotecas de otimização (em Python e R)
-    # são desenhadas para MINIMIZAR problemas (ex: minimizar erro).
-    # Como queremos MAXIMIZAR o lucro, retornamos o lucro negativo.
-    # Ex: Lucro de $1000 -> Retorna -1000. O algoritmo minimiza para -2000, logo lucro é $2000.
-    return -profit
+    # Retornamos a tripla de objetivos para a Otimização Multi-Objetivo
+    # f1: Lucro Invertido (Minimizar -Profit == Maximizar Profit)
+    # f2: Total Staff (Minimizar)
+    # f3: Penalização por excesso de Staff em dias úteis (Minimizar)
+    return (-profit, total_staff, penalizacao_semana)
 
 # ==========================================
-# TESTE DO WRAPPER DE OTIMIZAÇÃO (W5)
+# TESTE DO WRAPPER DE OTIMIZAÇÃO (W5 - CENÁRIO 3)
 # ==========================================
 if __name__ == "__main__":
     import random
 
-    print("--- A testar a Ponte de Otimização ---")
+    print("--- A testar a Ponte de Otimização (3 Objetivos - Cenário 3) ---")
 
-    # 1. Simular uma previsão do António para a próxima semana (7 dias)
+    # 1. Simular uma previsão (7 dias)
     dummy_forecast_customers = [80, 65, 70, 75, 60, 90, 110]
-    # Assumindo que a semana começa à Segunda-feira (Dias 1 a 5 = False, Dias 6 e 7 = True)
     dummy_forecast_weekend = [False, False, False, False, False, True, True] 
     
-    # 2. Simular um vetor plano gerado pelo algoritmo de busca (21 valores no total)
-    # Formato esperado: [pr1, hr_x1, hr_j1, pr2, hr_x2, hr_j2, ... até ao dia 7]
-    random_decision_vars = []
-    for _ in range(7):
-        # Geramos valores propositadamente difíceis para ver se a tua função limpa tudo bem
-        random_decision_vars.append(random.uniform(0.0, 0.50)) # pr (algoritmo pode tentar > 0.30!)
-        random_decision_vars.append(random.uniform(-5, 15))    # hr_x (algoritmo pode tentar negativos!)
-        random_decision_vars.append(random.uniform(0, 15))     # hr_j (números com muitas casas decimais!)
-
-    print("\nVetor bruto 'cuspido' pelo Otimizador (amostra do Dia 1 e 2):")
-    print([round(v, 2) for v in random_decision_vars[:6]])
+    # 2. Simular um vetor plano (21 valores) - Forçar excesso de staff para testar penalização
+    # Vamos por 10 funcionários num dia de semana (índice 0)
+    decision_vars_test = [0.10, 5, 5] + [0.10, 1, 1]*6
 
     # 3. Executar o tradutor
-    resultado_otimizador = optimize_weekly_wrapper(
-        decision_vars=random_decision_vars,
+    f1, f2, f3 = optimize_weekly_wrapper(
+        decision_vars=decision_vars_test,
         store='baltimore',
         forecast_customers=dummy_forecast_customers,
         forecast_is_weekend=dummy_forecast_weekend
     )
 
-    # 4. Lembra-te: O wrapper devolve lucro negativo para o algoritmo minimizar.
-    lucro_real = -resultado_otimizador
-
-    print("\n--- Resultado Final ---")
-    print(f"O Otimizador recebe o valor: {resultado_otimizador}")
-    print(f"Isto equivale a um Lucro Real de: ${lucro_real}")
+    print("\n--- Resultados Detalhados ---")
+    print(f"Objetivo 1 (Lucro Invertido):  {f1}")
+    print(f"Objetivo 2 (Total Staff):      {f2}")
+    print(f"Objetivo 3 (Penalização):     {f3}")
+    print(f"Lucro Real Estimado:          ${-f1}")
     
-    if lucro_real != 0:
-        print("\n✅ SUCESSO! A ponte está a formatar o vetor e a calcular o lucro perfeitamente.")
-    else:
-        print("\n❌ ERRO! Algo falhou no cálculo.")
+    print("\n✅ Teste de sanidade concluído. A tripla de objetivos está formatada corretamente.")

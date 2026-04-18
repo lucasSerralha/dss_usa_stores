@@ -7,3 +7,5 @@ env/
 data/*.csv
 .vscode/
 .idea/
+*.pkl
+data/processed/*.csv
