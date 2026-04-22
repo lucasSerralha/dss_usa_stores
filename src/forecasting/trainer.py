@@ -7,7 +7,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from statsmodels.tsa.statespace.sarimax import SARIMAX
 from prophet import Prophet
 import joblib
 import logging
@@ -75,6 +74,7 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
 
     logger.info(f"  [{store_name}] Galeria de resultados profissionais gerada em: {output_dir}")
 
+<<<<<<< HEAD
 def train_sarimax(train_df, test_df):
     """
     Treina o modelo SARIMAX com variáveis exógenas e parametrização de segurança.
@@ -135,30 +135,28 @@ def train_sarimax(train_df, test_df):
     return metrics, y_pred_vals
 
 def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_features=None, experiment_name='Default'):
+=======
+def train_and_evaluate_all(file_path, output_dir='data/processed/'):
+>>>>>>> parent of 2f6403b (Previsao_Concluida)
     """
     Core do Pipeline: Treina e compara múltiplos modelos de forecasting.
-    Permite a passagem de 'custom_features' para experimentação de variáveis.
+    Modelos incluídos: Seasonal Naive, Regressão Linear, Random Forest, Holt-Winters e Prophet.
+    Utiliza uma abordagem de validação temporal (Hold-out 80/20).
     """
     store_name = os.path.basename(file_path).replace('_processed.csv', '')
-    logger.info(f"[{experiment_name}] Iniciando Treino para: {store_name}")
+    logger.info(f"Iniciando Treino e Avaliação Técnica para: {store_name}")
     
     # Carregamento do dataset pré-processado
     df = pd.read_csv(file_path, parse_dates=['ds'])
     
-    # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' (Causalidade)
-    # Definimos conjuntos de features para experimentação
-    features_all = [
-        'Num_Customers', 'Pct_On_Sale', 'TouristEvent',
+    # Seleção de variáveis explicativas (Features) integradas no W4
+    features = [
+        'Num_Employees', 'Num_Customers', 'Pct_On_Sale', 'TouristEvent',
         'is_holiday', 'day_of_week', 'is_weekend', 'month', 'season_num',
-        'sales_lag_1', 'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
-        'customers_lag_1', 'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
+        'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
+        'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
         'sales_roll_mean_7', 'sales_roll_std_7'
     ]
-    
-    # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo.
-    features = custom_features if custom_features is not None else [f for f in features_all if f in df.columns]
-    
-    logger.info(f"  [{store_name}] Variáveis utilizadas: {len(features)}")
     
     # Divisão temporal (80% treino para histórico, 20% teste para validação futura)
     split_idx = int(len(df) * 0.8)
@@ -224,7 +222,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     except Exception as e:
         logger.error(f"  [{store_name}] Falha no Holt-Winters: {e}")
 
-    # 5. Facebook Prophet (Módulos Baseados em Decomposição - Tarefa do António)
+    # 5. Facebook Prophet (Séries Temporais Estatísticas - Tarefa do António)
+    # Configuração automatizada para capturar sazonalidade anual e semanal
     try:
         m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
         for col in features:
@@ -239,20 +238,10 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
             'MAPE': calculate_mape(y_test, y_pred_prophet)
         })
         plot_data['Prophet'] = y_pred_prophet
-
-        # NOVO: EXPORTAÇÃO DOS COMPONENTES DO PROPHET (Anatomia da Série)
-        # Capturamos a tendência e as sazonalidades para o dashboard ultra
-        # Note: 'weekly' e 'yearly' podem não existir se não houver dados suficientes
-        comp_cols = ['ds', 'trend']
-        if 'weekly' in forecast.columns: comp_cols.append('weekly')
-        if 'yearly' in forecast.columns: comp_cols.append('yearly')
-        
-        results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
-        forecast[comp_cols].to_csv(os.path.join(results_subpath, "prophet_components.csv"), index=False)
-
     except Exception as e:
         logger.error(f"  [{store_name}] Falha no Prophet: {e}")
 
+<<<<<<< HEAD
     # 6. SARIMAX (Nova Implementação Robusta - Requisito Prof.)
     try:
         metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df)
@@ -264,28 +253,14 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     except Exception as e:
         logger.error(f"  [{store_name}] Falha crítica no modelo SARIMAX: {e}")
 
+=======
+>>>>>>> parent of 2f6403b (Previsao_Concluida)
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
-    results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
-    plot_forecast_results(store_name, y_test, plot_data, results_subpath)
+    store_results_dir = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize())
+    plot_forecast_results(store_name, y_test, plot_data, store_results_dir)
 
-    # NOVO: EXPORTAÇÃO DE DADOS BRUTOS PARA PLOTLY
-    # Criamos um DataFrame consolidado com Datas, Real e Previsões
-    forecast_df = pd.DataFrame({'Date': test_df['ds'].values, 'Actual': y_test.values})
-    for model_name, y_pred in plot_data.items():
-        forecast_df[model_name] = y_pred
-    
-    forecast_df.to_csv(os.path.join(results_subpath, "forecast_values.csv"), index=False)
-
-    # NOVO: EXPORTAÇÃO DE IMPORTÂNCIA DE VARIÁVEIS (BASEADO NO RANDOM FOREST)
-    importance_df = pd.DataFrame({
-        'Feature': features,
-        'Importance': rf.feature_importances_
-    }).sort_values(by='Importance', ascending=False)
-    importance_df.to_csv(os.path.join(results_subpath, "feature_importance.csv"), index=False)
-
-    # Consolidação das métricas com identificador da experiência
+    # Consolidação dos resultados analíticos em ficheiro CSV por loja
     metrics_df = pd.DataFrame(store_metrics)
-    metrics_df['Experiment'] = experiment_name
-    metrics_df.to_csv(os.path.join(results_subpath, "store_metrics.csv"), index=False)
+    metrics_df.to_csv(os.path.join(store_results_dir, "store_metrics.csv"), index=False)
     
     return {store_name: store_metrics}
