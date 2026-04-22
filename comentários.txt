@@ -1,0 +1,13 @@
+Análise de lags do 1 ao 7.
+1,2,3,4,5,6,7 e 28.
+
+Iniciar desenvolvimento das Otimizações com base nos objetivos.
+objetivo 1 - otimizar por loja
+objetivo 2 - otimizar por conjunto de lojas ao máximo de 10.000 unidades de venda.
+objetivo 3 - multiobjetivo, Otimizar lucro e reduzir recursos humanos.
+
+Para a otimização, separar tarefas por objetivos.
+
+modelos baseados em dados históricos:sarimax, prophet, exponential smoothing.
+
+Modelos baseados em regras: modelo gaussiano, modelo logístico e modelo de poisson.
