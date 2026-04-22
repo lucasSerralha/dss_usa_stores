@@ -71,7 +71,7 @@ def main():
     # Definição dos conjuntos de variáveis (Apostas Técnicas do António e do Professor)
     # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
     feature_sets = {
-        "A_Temporal_Base": ['day_of_week', 'is_weekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
+        "A_Temporal_Base": ['day_of_week', 'IsWeekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
         "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
         "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
     }
@@ -97,10 +97,16 @@ def main():
     cols = ['Store', 'Experiment', 'Model', 'MAE', 'RMSE', 'MAPE']
     master_report_df = master_report_df[cols].sort_values(['Store', 'RMSE'])
     
-    # Exportação do Report Master
+    # Exportação do Report Master (Completo)
     report_path = os.path.join(results_base, '00_Master_Summary', 'fidelity_experimentation_report.csv')
     master_report_df.to_csv(report_path, index=False)
     logger.info(f"Relatório de experiências guardado em: {report_path}")
+
+    # MISSÃO: Exportar também para 'data/processed/final_model_report.csv' exigido pela DSS App
+    # O ficheiro final deve conter as métricas de todos os modelos treinados
+    final_report_path = 'data/processed/final_model_report.csv'
+    master_report_df.to_csv(final_report_path, index=False)
+    logger.info(f"Ficheiro legado final_model_report.csv atualizado com SARIMAX em: {final_report_path}")
     
     # Geração do Gráfico Resumo Geral
     summary_plot_path = os.path.join(results_base, '00_Master_Summary', 'model_comparison_summary.png')

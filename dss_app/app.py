@@ -16,11 +16,10 @@ from pymoo.optimize import minimize
 # Configuração da página
 st.set_page_config(page_title="TIAPOSE - DSS", layout="wide")
 
-st.title("📊 Sistema Inteligente de Apoio à Decisão (DSS)")
+st.title("Sistema Inteligente de Apoio à Decisão (DSS)")
 st.markdown("*(Integração Fase 2: Forecasting & Otimização Multi-Objetivo 3D)*")
 
 # Funções de carregamento de dados com cache para otimizar velocidade
-@st.cache_data
 def load_historical_data():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.abspath(os.path.join(script_dir, "../data/processed/features_stores_merged.csv"))
@@ -31,7 +30,6 @@ def load_historical_data():
         return df
     return None
 
-@st.cache_data
 def load_model_report():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Apontar para o relatório gerado pelo main_pipeline.py do António
@@ -47,12 +45,12 @@ df_models = load_model_report()
 
 if df_history is not None:
     # --- BARRA LATERAL (MENU) ---
-    st.sidebar.header("⚙️ Parâmetros de Controlo")
+    st.sidebar.header("Parâmetros de Controlo")
     lojas = df_history['Store'].unique().tolist()
     loja_selecionada = st.sidebar.selectbox("Selecione a Loja Alvo:", lojas)
     
     # --- SECÇÃO 1: CONTEXTO DE NEGÓCIO ---
-    st.header(f"🏪 Análise de Negócio: {loja_selecionada}")
+    st.header(f"Análise de Negócio: {loja_selecionada}")
     df_loja = df_history[df_history['Store'] == loja_selecionada]
     
     col1, col2, col3, col4 = st.columns(4)
@@ -64,7 +62,7 @@ if df_history is not None:
     st.markdown("---")
     
     # --- SECÇÃO 2: AVALIAÇÃO DE FORECASTING (W3 & W4) ---
-    st.header("📈 Desempenho dos Modelos Preditivos")
+    st.header("Desempenho dos Modelos Preditivos")
     
     if df_models is not None:
         # Filtro blindado contra maiúsculas, minúsculas e espaços perdidos
@@ -87,20 +85,20 @@ if df_history is not None:
             
             # Lógica para destacar o modelo com menor erro (vencedor)
             melhor_modelo = df_models_loja.loc[df_models_loja['RMSE'].idxmin()]
-            st.info(f"🏆 **Recomendação do Sistema:** Para a loja de {loja_selecionada}, o modelo mais preciso é o **{melhor_modelo['Model']}**, com um erro RMSE de apenas ${melhor_modelo['RMSE']:.2f}.")
+            st.info(f"**Recomendação do Sistema:** Para a loja de {loja_selecionada}, o modelo mais preciso é o **{melhor_modelo['Model']}**, com um erro RMSE de apenas ${melhor_modelo['RMSE']:.2f}.")
             
         else:
             st.warning(f"Sem dados de avaliação para a loja {loja_selecionada} no relatório atual.")
     else:
-        st.error("⚠️ Ficheiro 'final_model_report.csv' não encontrado. Garante que o pipeline do António foi executado.")
+        st.error("Ficheiro 'final_model_report.csv' não encontrado. Garante que o pipeline do António foi executado.")
 
     st.markdown("---")
     
     # --- SECÇÃO 3: OTIMIZAÇÃO DE ESCALAS (CENÁRIO 3) ---
-    st.header("🎯 Simulador de Escalas (Fronteira de Pareto 3D)")
+    st.header("Simulador de Escalas (Fronteira de Pareto 3D)")
     st.markdown("Executa a otimização multi-objetivo para encontrar o equilíbrio entre **Lucro**, **Dimensão da Equipa** e **Restrições Operacionais**.")
 
-    if st.button("🚀 Executar Simulação de Escalas (NSGA-II)"):
+    if st.button("Executar Simulação de Escalas (NSGA-II)"):
         with st.spinner("O algoritmo genético está a explorar as melhores combinações..."):
             # 1. Selecionar os últimos 7 dias para simular uma janela de planeamento
             df_slice = df_loja.sort_values('Date').tail(7)
@@ -141,10 +139,10 @@ if df_history is not None:
                 )
                 
                 st.plotly_chart(fig_3d, use_container_width=True)
-                st.success(f"✅ Otimização concluída! Foram identificadas {len(df_pareto)} soluções ótimas.")
-                st.info("💡 **Dica:** Roda o gráfico 3D com o rato para veres o 'compromisso' entre os três objetivos.")
+                st.success(f"Otimização concluída! Foram identificadas {len(df_pareto)} soluções ótimas.")
+                st.info("**Dica:** Roda o gráfico 3D com o rato para veres o 'compromisso' entre os três objetivos.")
             else:
-                st.warning("⚠️ Dados históricos insuficientes para simular uma janela de 7 dias.")
+                st.warning("Dados históricos insuficientes para simular uma janela de 7 dias.")
 
 else:
-    st.error("⚠️ Ficheiro de dados históricos não encontrado na pasta 'data/processed/'.")
+    st.error("Ficheiro de dados históricos não encontrado na pasta 'data/processed/'.")
