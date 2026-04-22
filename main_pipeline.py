@@ -46,7 +46,7 @@ def main():
     Função principal que orquestra todo o fluxo de dados: Pré-processamento, Treino e Relatórios.
     """
     print("\n" + "="*60)
-    print("USA STORES FORECASTING - PIPELINE MESTRE (EDICAO SENIOR 2026)")
+    print("USA STORES FORECASTING - PIPELINE PRINCIPAL (EDIÇÃO SENIOR 2026)")
     print("="*60)
     
     # 0. CONFIGURAÇÃO DA ESTRUTURA DE DIRETÓRIOS (Arquitetura de Resultados)
@@ -72,8 +72,8 @@ def main():
     # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
     feature_sets = {
         "A_Temporal_Base": ['day_of_week', 'is_weekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
-        "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
-        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
+        "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
+        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_roll_mean_7']
     }
 
     master_results_list = []
@@ -108,7 +108,7 @@ def main():
     
     # Recomendação Automática do Melhor Modelo por Loja
     print("\n" + "="*80)
-    print("RANKING DE FIDEDIGNIDADE (MELHOR SETUP POR LOJA)")
+    print("RANKING DE FIDEDIGNIDADE (MELHOR CONFIGURAÇÃO POR LOJA)")
     print("="*80 + "\n")
     best_setups = master_report_df.groupby('Store').first().reset_index()
     print(best_setups.to_string(index=False))

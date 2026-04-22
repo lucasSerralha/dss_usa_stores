@@ -75,6 +75,31 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
 
     logger.info(f"  [{store_name}] Galeria de resultados profissionais gerada em: {output_dir}")
 
+def train_sarimax(train_df, test_df):
+    """
+    Treina um modelo SARIMAX com variáveis exógenas e sazonalidade semanal.
+    Identificado como um dos requisitos de alta performance do projeto.
+    """
+    y_train = train_df['y']
+    y_test = test_df['y']
+    
+    # Seleção de variáveis exógenas (apenas numéricas, excluindo IDs e datas)
+    features = [c for c in train_df.columns if c not in ['ds', 'y', 'store_id', 'Date']]
+    exog_train = train_df[features].astype(float)
+    exog_test = test_df[features].astype(float)
+
+    # Configuração SARIMAX: Ordem (1,1,1) e Sazonal (1,1,1,7)
+    model = SARIMAX(y_train, exog=exog_train, order=(1,1,1), seasonal_order=(1,1,1,7)).fit(disp=False)
+    y_pred = model.forecast(steps=len(y_test), exog=exog_test)
+    
+    metrics = {
+        'MAE': mean_absolute_error(y_test, y_pred),
+        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
+        'MAPE': calculate_mape(y_test, y_pred)
+    }
+    
+    return metrics, y_pred.values
+
 def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_features=None, experiment_name='Default'):
     """
     Core do Pipeline: Treina e compara múltiplos modelos de forecasting.
@@ -90,9 +115,9 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     # Definimos conjuntos de features para experimentação
     features_all = [
         'Num_Customers', 'Pct_On_Sale', 'TouristEvent',
-        'is_holiday', 'day_of_week', 'is_weekend', 'month', 'season_num',
-        'sales_lag_1', 'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
-        'customers_lag_1', 'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
+        'is_holiday', 'days_to_next_holiday', 'day_of_week', 'is_weekend', 'month', 'season_num',
+        'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
+        'customers_lag_1', 'customers_lag_2', 'customers_lag_3', 'customers_lag_4', 'customers_lag_5', 'customers_lag_6', 'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
         'sales_roll_mean_7', 'sales_roll_std_7'
     ]
     
@@ -146,7 +171,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     })
     plot_data['Random Forest'] = y_pred_rf
     
-    # Persistência do modelo para futura utilização na fase de Otimização (W5)
+    # Gravação do modelo (Persistência) para utilização futura na fase de Otimização (NSGA-II)
     if not os.path.exists('models'): os.makedirs('models')
     joblib.dump(rf, f'models/{store_name}_rf_model.pkl')
 
@@ -194,25 +219,45 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     except Exception as e:
         logger.error(f"  [{store_name}] Falha no Prophet: {e}")
 
-    # 6. ARIMAX (AutoRegressive Integrated Moving Average with Exogenous - Novo Requisito Prof.)
+    # 6. SARIMAX (Nova Implementação Robusta - Requisito Prof.)
     try:
-        # Usamos SARIMAX com sazonalidade semanal (7 dias) e variáveis exógenas
-        exog_train = train_df[features]
-        exog_test = test_df[features]
-        
-        # Ordem (1,1,1) e Sazonal (1,1,1,7) como ponto de partida robusto
-        arimax = SARIMAX(y_train, exog=exog_train, order=(1,1,1), seasonal_order=(1,1,1,7)).fit(disp=False)
-        y_pred_arimax = arimax.forecast(steps=len(y_test), exog=exog_test)
-        
+        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df)
         store_metrics.append({
-            'Model': 'ARIMAX',
-            'MAE': mean_absolute_error(y_test, y_pred_arimax),
-            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_arimax)),
-            'MAPE': calculate_mape(y_test, y_pred_arimax)
+            'Model': 'SARIMAX',
+            **metrics_sarimax
         })
-        plot_data['ARIMAX'] = y_pred_arimax.values
+        plot_data['SARIMAX'] = y_pred_sarimax
     except Exception as e:
-        logger.error(f"  [{store_name}] Falha no ARIMAX: {e}")
+        logger.error(f"  [{store_name}] Falha no SARIMAX: {e}")
+
+    # --- 7. MODELO ENSEMBLE ADAPTATIVO (PROFESSIONAL TOP-3) ---
+    try:
+        # Filtrar modelos inteligentes (ignorar o baseline para não degradar o ensemble)
+        intelligent_models = [m for m in store_metrics if m['Model'] != 'Seasonal Naive']
+        
+        if len(intelligent_models) >= 2:
+            # Ordenar por RMSE (menor é melhor) e pegar no Top 3 (ou Top 2 se houver poucos)
+            n_top = min(3, len(intelligent_models))
+            top_metrics = sorted(intelligent_models, key=lambda x: x['RMSE'])[:n_top]
+            top_names = [m['Model'] for m in top_metrics]
+            
+            # Extrair as previsões correspondentes
+            preds_to_average = [plot_data[name] for name in top_names if name in plot_data]
+            
+            if preds_to_average:
+                y_pred_ensemble = np.mean(preds_to_average, axis=0)
+                
+                # Adicionar métricas do Ensemble
+                store_metrics.append({
+                    'Model': 'Ensemble (Top-3 Experts)',
+                    'MAE': mean_absolute_error(y_test, y_pred_ensemble),
+                    'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_ensemble)),
+                    'MAPE': calculate_mape(y_test, y_pred_ensemble)
+                })
+                plot_data['Ensemble (Top-3 Experts)'] = y_pred_ensemble
+                logger.info(f"  [{store_name}] Ensemble criado com base em: {', '.join(top_names)}")
+    except Exception as e:
+        logger.error(f"  [{store_name}] Falha ao criar Ensemble: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
     results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
@@ -233,7 +278,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     }).sort_values(by='Importance', ascending=False)
     importance_df.to_csv(os.path.join(results_subpath, "feature_importance.csv"), index=False)
 
-    # Consolidação das métricas com identificador da experiência
+    # Consolidação das métricas finais com o identificador da experiência atual
     metrics_df = pd.DataFrame(store_metrics)
     metrics_df['Experiment'] = experiment_name
     metrics_df.to_csv(os.path.join(results_subpath, "store_metrics.csv"), index=False)
