@@ -59,7 +59,7 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     # 6. Feature Engineering - Atributos Temporais
     df['is_holiday'] = df['Date'].apply(lambda x: 1 if x in us_holidays else 0)
     df['day_of_week'] = df['Date'].dt.dayofweek
-    df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
+    df['IsWeekend'] = (df['day_of_week'] >= 5).astype(int)
     df['month'] = df['Date'].dt.month
     df['year'] = df['Date'].dt.year
     df['season_num'] = df['Date'].apply(get_season).map({'Winter': 0, 'Spring': 1, 'Summer': 2, 'Autumn': 3})

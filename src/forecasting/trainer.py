@@ -81,23 +81,31 @@ def train_sarimax(train_df, test_df):
     Garante que os dados são numéricos e preenchidos, evitando falhas de convergência.
     """
     # 1. Seleção e Limpeza de Variáveis Exógenas (Critério de Especialista)
-    exo_cols = ['Pct_On_Sale', 'is_weekend', 'TouristEvent']
+    # Suportamos tanto 'is_weekend' como 'IsWeekend' por robustez
+    potential_exo = ['Pct_On_Sale', 'IsWeekend', 'is_weekend', 'TouristEvent']
+    exo_cols = [c for c in potential_exo if c in train_df.columns]
     
     def prepare_exog(df):
+        # Seleção segura das colunas existentes
         exog = df[exo_cols].copy()
         
         # Tratamento de strings (ex: 'Yes'/'No' -> 1/0) para TouristEvent
         if 'TouristEvent' in exog.columns and exog['TouristEvent'].dtype == object:
-            exog['TouristEvent'] = exog['TouristEvent'].map({'Yes': 1, 'No': 0, '0': 0, '1': 1})
+            exog['TouristEvent'] = exog['TouristEvent'].map({'Yes': 1, 'No': 0, '0': 0, '1': 1}).fillna(0)
         
-        # Conversão explícita para float e preenchimento de NaNs com 0 para estabilidade
-        return exog.astype(float).fillna(0)
+        # MISSÃO: Garantir array estritamente numérico e sem NaNs (fillna(0) e astype(float))
+        exog = exog.apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
+        return exog
 
     exog_train = prepare_exog(train_df)
     exog_test = prepare_exog(test_df)
     
-    y_train = train_df['y'].astype(float)
-    y_test = test_df['y'].astype(float)
+    y_train = train_df['y'].astype(float).fillna(0)
+    y_test = test_df['y'].astype(float).fillna(0)
+    
+    # MISSÃO: Garantir que os índices do endog e exog estão perfeitamente alinhados
+    exog_train = exog_train.loc[y_train.index]
+    exog_test = exog_test.loc[y_test.index]
     
     # 2. Configuração do Modelo com Fallback Robusto (1,1,1)(1,1,1)7
     # Desativamos enforce_stationarity e enforce_invertibility para dados reais ruidosos
@@ -111,11 +119,12 @@ def train_sarimax(train_df, test_df):
     )
     
     # Ajuste silencioso (disp=False) para o pipeline principal
-    results = model.fit(disp=False)
+    # Limitamos as iterações para evitar falhas silenciosas de recursos
+    results = model.fit(disp=False, maxiter=50)
     
     # 3. Geração de Previsões e Cálculo de Métricas Consistentes
     y_pred = results.forecast(steps=len(y_test), exog=exog_test)
-    y_pred_vals = y_pred.values
+    y_pred_vals = np.nan_to_num(y_pred.values) # Segurança extra: converte NaNs em 0 na previsão
     
     metrics = {
         'MAE': mean_absolute_error(y_test, y_pred_vals),
@@ -253,7 +262,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         })
         plot_data['SARIMAX'] = y_pred_sarimax
     except Exception as e:
-        logger.error(f"  [{store_name}] Falha no SARIMAX: {e}")
+        logger.error(f"  [{store_name}] Falha crítica no modelo SARIMAX: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
     results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)

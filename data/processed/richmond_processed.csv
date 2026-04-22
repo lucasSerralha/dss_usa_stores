@@ -1,4 +1,4 @@
-Date,Num_Employees,Num_Customers,Pct_On_Sale,TouristEvent,Sales,is_holiday,day_of_week,is_weekend,month,year,season_num,sales_lag_1,customers_lag_1,sales_lag_7,customers_lag_7,sales_lag_14,customers_lag_14,sales_lag_21,customers_lag_21,sales_lag_28,customers_lag_28,sales_roll_mean_7,sales_roll_std_7,ds,y
+Date,Num_Employees,Num_Customers,Pct_On_Sale,TouristEvent,Sales,is_holiday,day_of_week,IsWeekend,month,year,season_num,sales_lag_1,customers_lag_1,sales_lag_7,customers_lag_7,sales_lag_14,customers_lag_14,sales_lag_21,customers_lag_21,sales_lag_28,customers_lag_28,sales_roll_mean_7,sales_roll_std_7,ds,y
 2012-07-29,10.0,79.0,10.42,0,21111.0,0,6,1,7,2012,2,29912.0,112.0,23127.0,82.0,19341.0,78.0,22472.0,90.0,19532.0,89.0,21990.0,4806.212160665958,2012-07-29,21111.0
 2012-07-30,6.0,67.0,6.31,0,24762.0,0,0,0,7,2012,2,21111.0,79.0,17733.0,69.0,22671.0,67.0,20388.0,66.0,25403.0,79.0,21702.0,4787.088816110825,2012-07-30,24762.0
 2012-07-31,7.0,64.0,8.39,0,18873.0,0,1,0,7,2012,2,24762.0,67.0,21533.0,69.0,20870.0,70.0,18678.0,66.0,17711.0,97.0,22706.14285714286,4546.973991149552,2012-07-31,18873.0

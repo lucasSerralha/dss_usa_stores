@@ -2,141 +2,80 @@ import numpy as np
 import random
 import sys
 import os
+import matplotlib
+matplotlib.use('Agg') # O truque para o Ubuntu (Não tenta abrir janelas!)
+import matplotlib.pyplot as plt
 
-# Importar ficheiros da pasta 'src'
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 sys.path.append(SRC_DIR)
 
-# Importar função responsável por calcular os objetivos da otimização
 from utils.profit_logic import optimize_weekly_wrapper
 
-
-# Função para gerar uma solução inicial aleatória para os 7 dias da semana
 def generate_initial_solution():
-
     solution = []
-
     for _ in range(7):
-
-        # Percentagem de desconto entre
-        pr = random.uniform(0.0, 0.30)
-
-        # Nº de funcionários experientes
-        hr_x = random.randint(0, 15)
-
-        # Nº de funcionários juniores
-        hr_j = random.randint(0, 15)
-
-        # Guardar os valores
-        solution.extend([pr, hr_x, hr_j])
-
+        solution.extend([random.uniform(0.0, 0.30), random.randint(0, 15), random.randint(0, 15)])
     return np.array(solution)
 
-
-# Função para gerar uma solução vizinha
-# Uma solução vizinha é criada alterando ligeiramente um dos valores
 def generate_neighbor(solution):
-
     neighbor = solution.copy()
-
-    # Escolher aleatoriamente qual variável será alterada
     index = random.randint(0, len(solution) - 1)
-
-    # Pequena alteração aleatória
-    change = random.uniform(-0.05, 0.05)
-
-    # Garantir que o valor não fica negativo
-    neighbor[index] = max(0, neighbor[index] + change)
-
+    
+    if index % 3 == 0:
+        neighbor[index] = max(0.0, min(0.30, neighbor[index] + random.uniform(-0.05, 0.05)))
+    else:
+        neighbor[index] = max(0, neighbor[index] + random.choice([-1, 1]))
     return neighbor
 
-
-# Função que avalia a qualidade de uma solução
 def evaluate_solution(solution, store, forecast_customers, forecast_is_weekend):
-
-    f1, f2, f3 = optimize_weekly_wrapper(
-        decision_vars=solution,
-        store=store,
-        forecast_customers=forecast_customers,
-        forecast_is_weekend=forecast_is_weekend
-    )
-
-    # Neste algoritmo utilizamos apenas o primeiro objetivo
+    f1, f2, f3 = optimize_weekly_wrapper(solution, store, forecast_customers, forecast_is_weekend)
+    # CENÁRIO 1: Queremos apenas maximizar o Lucro (f1) para o Relatório!
     return f1
 
-
-# Implementação do algoritmo Hill Climbing
 def hill_climbing(store, forecast_customers, forecast_is_weekend, iterations=1000):
-
-    # Gerar solução inicial
     current_solution = generate_initial_solution()
-
-    # Avaliar solução inicial
-    current_score = evaluate_solution(
-        current_solution,
-        store,
-        forecast_customers,
-        forecast_is_weekend
-    )
-
+    best_score = evaluate_solution(current_solution, store, forecast_customers, forecast_is_weekend)
     best_solution = current_solution
-    best_score = current_score
+    
+    history = [best_score]
 
-    # Processo iterativo de melhoria
-    for i in range(iterations):
-
+    for _ in range(iterations):
         neighbor = generate_neighbor(best_solution)
-
-        score = evaluate_solution(
-            neighbor,
-            store,
-            forecast_customers,
-            forecast_is_weekend
-        )
-
-        # Se a nova solução for melhor, substitui a atual
+        score = evaluate_solution(neighbor, store, forecast_customers, forecast_is_weekend)
         if score < best_score:
-
             best_solution = neighbor
             best_score = score
+        history.append(best_score)
+        
+    return best_solution, best_score, history
 
-    return best_solution, best_score
-
-
-# Execução do algoritmo
 if __name__ == "__main__":
-
-    # Previsão de clientes por dia da semana
     previsao_clientes = [80, 65, 70, 75, 60, 90, 110]
-
-    # Indicação de fim de semana
     previsao_fds = [False, False, False, False, False, True, True]
+    
+    print("A executar Hill Climbing (Cenário 1: Maximização de Lucro)...")
+    solution, score, history = hill_climbing('baltimore', previsao_clientes, previsao_fds, iterations=1000)
 
-    # Executar Hill Climbing para a loja Baltimore
-    solution, score = hill_climbing(
-        'baltimore',
-        previsao_clientes,
-        previsao_fds
-    )
+    # Inverter o f1 para voltar a ser o Lucro real positivo
+    history_lucro = [-x for x in history]
 
-    # Lista com os dias da semana
-    days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
-
-    print("\nMelhor estratégia semanal encontrada:\n")
-
-    # Mostrar estratégia por dia
-    for i in range(7):
-
-        pr = solution[i*3]
-        hr_x = int(solution[i*3 + 1])
-        hr_j = int(solution[i*3 + 2])
-
-        print(f"{days[i]}:")
-        print(f"  Desconto: {pr*100:.2f}%")
-        print(f"  Funcionários Experientes: {hr_x}")
-        print(f"  Funcionários Juniores: {hr_j}")
-        print()
-
-    # Mostrar score final
-    print("Score da solução:", score)
+    print(f"✅ SUCESSO! Lucro Máximo Alcançado: ${history_lucro[-1]:.2f}")
+    
+    # -----------------------------------------------------
+    # SALVAR A IMAGEM EM VEZ DE TENTAR ABRIR (RESOLVE O ERRO)
+    # -----------------------------------------------------
+    out_dir = os.path.join(SRC_DIR, "..", "results")
+    os.makedirs(out_dir, exist_ok=True)
+    img_path = os.path.join(out_dir, "hill_climbing_convergence.png")
+    
+    plt.figure(figsize=(10, 5))
+    plt.plot(history_lucro, color='green')
+    plt.title("Convergência do Hill Climbing (Cenário 1: Maximização de Lucro)")
+    plt.xlabel("Iterações")
+    plt.ylabel("Lucro ($)")
+    plt.grid(True)
+    plt.savefig(img_path)
+    plt.close()
+    
+    print(f"📊 Gráfico guardado com sucesso em: {img_path}")
