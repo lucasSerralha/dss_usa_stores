@@ -10,7 +10,7 @@ O sistema segue uma arquitetura modular que separa a preparação de dados, o mo
 
 ### 📁 `src/` - Núcleo de Inteligência
 *   **`data/preparation.py`**: Limpeza científica de dados, tratamento de outliers e engenharia de atributos avançada (Lags dinâmicos, médias móveis e contexto de feriados).
-*   **`forecasting/trainer.py`**: Motor de treino multi-algoritmo capaz de avaliar modelos clássicos (ARIMAX, Holt-Winters) e Machine Learning (Random Forest, Prophet).
+*   **`forecasting/trainer.py`**: Motor de treino multi-algoritmo capaz de avaliar modelos clássicos (SARIMAX, Holt-Winters), Machine Learning (Random Forest, Prophet) e o **Ensemble Adaptativo (Top-3 Experts)**.
 *   **`optimization/nsga2_model.py`**: Algoritmo Genético de vanguarda (NSGA-II) para a fase de decisão ótima (Staffing vs Profit).
 
 ### 📁 `results/` - Repositório de Evidências
@@ -22,13 +22,14 @@ O sistema segue uma arquitetura modular que separa a preparação de dados, o mo
 
 Diferente de abordagens básicas, este sistema avalia automaticamente três cenários de variáveis para encontrar a máxima fidedignidade:
 1.  **Cenário A (Temporal Base)**: Focado em padrões cíclicos puramente históricos.
-2.  **Cenário B (Sales Dynamics)**: Integra a dinâmica de curto prazo (ontem) e persistência de dados.
-3.  **Cenário C (Context Expert)**: Integra o contexto total de negócio (Promoções, Eventos Locais e Feriados).
+2.  **Cenário B (Sales Dynamics)**: Integra a dinâmica de curto prazo (Lags) e a persistência de dados históricos.
+3.  **Cenário C (Context Expert)**: Integra o contexto total de negócio (Promoções, Eventos Locais e **Contagem Decrescente para Feriados**).
 
 ---
 
 ## 📈 Modelos Integrados
-*   **ARIMAX**: Modelo estatístico clássico que utiliza variáveis exógenas (Promoções) para ajustar a série temporal.
+*   **Ensemble (Top-3 Experts)**: Modelo de vanguarda que identifica automaticamente os 3 melhores modelos para cada loja e combina as suas previsões. Alcançou a **máxima fidedignidade** (menor RMSE) na maioria das localizações.
+*   **SARIMAX**: Modelo estatístico robusto que utiliza variáveis exógenas (Promoções) e componentes sazonais para ajustar a série temporal.
 *   **Prophet (Meta)**: Abordagem Bayesiana robusta a anomalias e feriados complexos.
 *   **Random Forest & Linear Regression**: Abordagem de Machine Learning para capturar correlações não lineares.
 *   **Holt-Winters**: Suavização exponencial tripla para padrões puramente sazonais.

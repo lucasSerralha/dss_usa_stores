@@ -10,10 +10,10 @@ from plotly.subplots import make_subplots
 import os
 import numpy as np
 
-# Configuração da página - Elite Theme
-st.set_page_config(page_title="USA Stores DSS | Ultra Edition", layout="wide", page_icon="📈")
+# Configuração da página e estética (Tema Escuro/Executivo)
+st.set_page_config(page_title="USA Stores Forecasting DSS", page_icon="📈", layout="wide")
 
-# CSS
+# Estilo CSS customizado para KPIs de alto impacto e estética premium
 st.markdown("""
     <style>
     /* Estilo Base para as Métricas */
@@ -107,13 +107,15 @@ if df_history is not None:
     
     # Cálculo de Ganho de Fidedignidade
     if df_master is not None:
+        # Filtragem das métricas para a loja e cenário selecionados
         store_metrics = df_master[(df_master['Store'].str.lower() == loja_sel.lower()) & (df_master['Experiment'] == cenario_sel)]
         if not store_metrics.empty:
             rmse_min = store_metrics['RMSE'].min()
+            # Cálculo comparativo com o Baseline (Seasonal Naive)
             rmse_naive = store_metrics[store_metrics['Model'] == 'Seasonal Naive']['RMSE'].values[0]
             ganho = ((rmse_naive - rmse_min) / rmse_naive) * 100
             
-            # KPI 2 Custom (Lado a Lado como solicitado)
+            # Bloco KPI: Ganho de Precisão (Lado a Lado)
             with col_kpi2:
                 st.markdown(f"""
                     <div class="stMetric">
@@ -126,7 +128,10 @@ if df_history is not None:
                 """, unsafe_allow_html=True)
             
             col_kpi3.metric("Melhor RMSE Diário", f"${rmse_min:,.0f}")
-            col_kpi4.metric("Fidelidade MAPE", f"{store_metrics['MAPE'].min():.1f}%")
+            
+            # Cálculo da Fidelidade (100% - Erro MAPE)
+            fidelidade = 100 - store_metrics['MAPE'].min()
+            col_kpi4.metric("Fidelidade (Acurácia)", f"{fidelidade:.1f}%")
 
     # --- NOVO POSICIONAMENTO DO EXPANDER (Com tom cinza sidebar) ---
     st.markdown("""
@@ -265,14 +270,14 @@ if df_history is not None:
     # --- TAB 4: INTELIGÊNCIA (FEATURES) ---
     with tab4:
         st.subheader("🧠 Porquê estas vendas? (Drivers de IA)")
-        st.markdown('<p style="font-style: italic; margin-top: -10px; margin-bottom: 10px; opacity: 0.8;">Interpretabilidade Algorítmica (XAI): Identificação dos principais drivers e variáveis que influenciam as projeções de venda.</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-style: italic; margin-top: -10px; margin-bottom: 10px; opacity: 0.8;">Interpretabilidade Algorítmica (XAI): Identificação dos principais drivers que influenciam as projeções. Notar o impacto da variável <b>days_to_next_holiday</b> na antecipação de picos de consumo.</p>', unsafe_allow_html=True)
         
         path_feat = os.path.join(script_dir, f"../results/02_Forecasting_Report/{loja_sel.capitalize()}/{cenario_sel}/feature_importance.csv")
         
         if os.path.exists(path_feat):
             df_feat = pd.read_csv(path_feat).head(10)
             fig_feat = px.bar(df_feat, x='Importance', y='Feature', orientation='h',
-                              title=f"Top 10 Influenciadores ({loja_sel.capitalize()})",
+                              title=f"Importância das Variáveis ({loja_sel.capitalize()})",
                               labels={'Feature': 'Variável', 'Importance': 'Importância'},
                               color='Importance', color_continuous_scale='Blues')
             fig_feat.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(t=60, b=10, l=10, r=10))
