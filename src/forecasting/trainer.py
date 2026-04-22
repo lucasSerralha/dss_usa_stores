@@ -75,16 +75,15 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
 
     logger.info(f"  [{store_name}] Galeria de resultados profissionais gerada em: {output_dir}")
 
-def train_sarimax(train_df, test_df):
+def train_sarimax(train_df, test_df, features):
     """
-    Treina um modelo SARIMAX com variáveis exógenas e sazonalidade semanal.
-    Identificado como um dos requisitos de alta performance do projeto.
+    Treina um modelo SARIMAX respeitando estritamente a lista de features fornecida.
+    Garante que não há fuga de dados de variáveis não autorizadas.
     """
     y_train = train_df['y']
     y_test = test_df['y']
     
-    # Seleção de variáveis exógenas (apenas numéricas, excluindo IDs e datas)
-    features = [c for c in train_df.columns if c not in ['ds', 'y', 'store_id', 'Date']]
+    # Seleção estrita apenas das features autorizadas para esta experiência
     exog_train = train_df[features].astype(float)
     exog_test = test_df[features].astype(float)
 
@@ -111,14 +110,13 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     # Carregamento do dataset pré-processado
     df = pd.read_csv(file_path, parse_dates=['ds'])
     
-    # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' (Causalidade)
-    # Definimos conjuntos de features para experimentação
+    # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' e 'Num_Customers' (Causalidade/Leakage)
     features_all = [
-        'Num_Customers', 'Pct_On_Sale', 'TouristEvent',
-        'is_holiday', 'days_to_next_holiday', 'day_of_week', 'is_weekend', 'month', 'season_num',
-        'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
-        'customers_lag_1', 'customers_lag_2', 'customers_lag_3', 'customers_lag_4', 'customers_lag_5', 'customers_lag_6', 'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
-        'sales_roll_mean_7', 'sales_roll_std_7'
+        'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 
+        'day_of_week', 'is_weekend', 'month', 'season_num',
+        'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
+        'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
+        'customers_roll_mean_7', 'customers_roll_std_7'
     ]
     
     # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo.
@@ -214,6 +212,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         if 'yearly' in forecast.columns: comp_cols.append('yearly')
         
         results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+        os.makedirs(results_subpath, exist_ok=True)
         forecast[comp_cols].to_csv(os.path.join(results_subpath, "prophet_components.csv"), index=False)
 
     except Exception as e:
@@ -221,7 +220,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
 
     # 6. SARIMAX (Nova Implementação Robusta - Requisito Prof.)
     try:
-        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df)
+        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df, features)
         store_metrics.append({
             'Model': 'SARIMAX',
             **metrics_sarimax

@@ -79,13 +79,9 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     df['days_to_next_holiday'] = df['Date'].apply(days_until_next)
     logger.info(f"  [{store_name}] Feature 'days_to_next_holiday' gerada com sucesso.")
     
-    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 1-7, 14, 21, 28 dias)
-    # O lag 1-7 captura a dinâmica semanal detalhada, essencial para padrões de curto prazo.
-    for lag in range(1, 8):
-        df[f'sales_lag_{lag}'] = df['Sales'].shift(lag)
-        df[f'customers_lag_{lag}'] = df['Num_Customers'].shift(lag)
-        
-    for lag in [14, 21, 28]:
+    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 1, 7, 14, 21, 28 dias)
+    # O lag 1 (vendas de ontem) é crucial para capturar a persistência de curto prazo.
+    for lag in [1, 7, 14, 21, 28]:
         df[f'sales_lag_{lag}'] = df['Sales'].shift(lag)
         df[f'customers_lag_{lag}'] = df['Num_Customers'].shift(lag)
         
