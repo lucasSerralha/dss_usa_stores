@@ -72,8 +72,8 @@ def main():
     # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
     feature_sets = {
         "A_Temporal_Base": ['day_of_week', 'is_weekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
-        "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
-        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_2', 'sales_lag_3', 'sales_lag_4', 'sales_lag_5', 'sales_lag_6', 'sales_lag_7', 'sales_roll_mean_7']
+        "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
+        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
     }
 
     master_results_list = []
