@@ -64,9 +64,9 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     df['year'] = df['Date'].dt.year
     df['season_num'] = df['Date'].apply(get_season).map({'Winter': 0, 'Spring': 1, 'Summer': 2, 'Autumn': 3})
     
-    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 7, 14, 21, 28 dias)
-    # Permite ao modelo entender padrões cíclicos passados
-    for lag in [7, 14, 21, 28]:
+    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 1-7 e 28 dias)
+    # Crucial para capturar a persistência de curto prazo e ciclos semanais
+    for lag in [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]:
         df[f'sales_lag_{lag}'] = df['Sales'].shift(lag)
         df[f'customers_lag_{lag}'] = df['Num_Customers'].shift(lag)
         

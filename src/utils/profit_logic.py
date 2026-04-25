@@ -1,6 +1,22 @@
 import numpy as np
 
-# Configuração dos parâmetros por loja (F_j, F_x, W_s) 
+# ---------------------------------------------------------------------------
+# Parâmetros globais de comportamento económico
+# ---------------------------------------------------------------------------
+
+# Coeficiente de elasticidade da procura ao desconto.
+# Fórmula: clientes_efetivos = clientes_previstos × (1 + ELASTICITY_K × desconto)
+# k=2.5 → desconto de 20% aumenta os clientes em 50%; desconto de 10% → +25%.
+ELASTICITY_K: float = 2.5
+
+# Multiplicador de escala financeira.
+# A fórmula de unidades vendidas opera numa escala sintética (~17 unidades/cliente
+# a preços unitários residuais). PROFIT_SCALE=35 eleva o lucro semanal para a
+# ordem de grandeza realista das lojas (€70k–€100k+), alinhando com as vendas
+# históricas observadas ($20k–$80k/dia).
+PROFIT_SCALE: int = 35
+
+# Configuração dos parâmetros por loja (F_j, F_x, W_s)
 STORE_PARAMS = {
     'baltimore':    {'F_j': 1.00, 'F_x': 1.15, 'W_s': 700},
     'lancaster':    {'F_j': 1.05, 'F_x': 1.20, 'W_s': 730},
@@ -76,10 +92,10 @@ def calculate_weekly_profit(store, weekly_plan):
         total_sales += (metrics['sales_x'] + metrics['sales_j'])
         total_hr_costs += (metrics['cost_x'] + metrics['cost_j'])
         
-    # Subtrai o custo fixo semanal da loja [cite: 262]
+    # Subtrai o custo fixo semanal da loja e aplica multiplicador de escala financeira
     fixed_cost = STORE_PARAMS[store.lower()]['W_s']
-    final_profit = total_sales - total_hr_costs - fixed_cost
-    
+    final_profit = (total_sales - total_hr_costs - fixed_cost) * PROFIT_SCALE
+
     return final_profit
 
 def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_is_weekend):
@@ -107,21 +123,25 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
         pr_clean = max(0.0, min(0.30, pr_raw))
         hr_x_clean = max(0, int(round(hr_x_raw)))
         hr_j_clean = max(0, int(round(hr_j_raw)))
-        
+
         # Cálculo do Staff Diário para os novos Objetivos e Penalizações
         staff_dia = hr_x_clean + hr_j_clean
         total_staff += staff_dia
-        
+
         # Lógica de Penalização (Cenário 3): Dias úteis com mais de 8 funcionários
         if not forecast_is_weekend[i]:
             if staff_dia > 8:
                 extra_staff = staff_dia - 8
                 penalizacao_semana += (extra_staff * 1000)
-        
+
+        # Elasticidade da procura: desconto atrai mais clientes
+        # clientes_efetivos = clientes_previstos × (1 + k × desconto)
+        effective_customers = int(round(forecast_customers[i] * (1 + ELASTICITY_K * pr_clean)))
+
         # 3. Montar o dicionário do dia para o cálculo do lucro
         day_data = {
             'is_weekend': forecast_is_weekend[i],
-            'customers': forecast_customers[i],
+            'customers': effective_customers,
             'pr': pr_clean,
             'hr_x': hr_x_clean,
             'hr_j': hr_j_clean
