@@ -38,7 +38,7 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
     plt.plot(range(30), y_true_last_30, label='Vendas Reais (Ground Truth)', color='black', linewidth=3, marker='o', zorder=5)
     
     # Paleta de cores profissional para distinção dos modelos
-    colors = ['#4A90E2', '#50C878', '#E67E22', '#F1C40F', '#9B59B6', '#E74C3C']
+    colors = ['#4A90E2', '#50C878', '#E67E22', '#F1C40F', '#9B59B6']
     for i, (model_name, y_pred) in enumerate(results_dict.items()):
         plt.plot(range(30), y_pred[-30:], label=f'Previsto: {model_name}', linestyle='--', alpha=0.8, color=colors[i % len(colors)], linewidth=2)
     
@@ -75,67 +75,29 @@ def plot_forecast_results(store_name, y_test, results_dict, output_dir):
 
     logger.info(f"  [{store_name}] Galeria de resultados profissionais gerada em: {output_dir}")
 
-def train_sarimax(train_df, test_df):
+def train_sarimax(train_df, test_df, features):
     """
-    Treina o modelo SARIMAX com variáveis exógenas e parametrização de segurança.
-    Garante que os dados são numéricos e preenchidos, evitando falhas de convergência.
+    Treina um modelo SARIMAX respeitando estritamente a lista de features fornecida.
+    Garante que não há fuga de dados de variáveis não autorizadas.
     """
-    # 1. Seleção e Limpeza de Variáveis Exógenas (Critério de Especialista)
-    # Suportamos tanto 'is_weekend' como 'IsWeekend' por robustez
-    potential_exo = ['Pct_On_Sale', 'IsWeekend', 'is_weekend', 'TouristEvent']
-    exo_cols = [c for c in potential_exo if c in train_df.columns]
+    y_train = train_df['y']
+    y_test = test_df['y']
     
-    def prepare_exog(df):
-        # Seleção segura das colunas existentes
-        exog = df[exo_cols].copy()
-        
-        # Tratamento de strings (ex: 'Yes'/'No' -> 1/0) para TouristEvent
-        if 'TouristEvent' in exog.columns and exog['TouristEvent'].dtype == object:
-            exog['TouristEvent'] = exog['TouristEvent'].map({'Yes': 1, 'No': 0, '0': 0, '1': 1}).fillna(0)
-        
-        # MISSÃO: Garantir array estritamente numérico e sem NaNs (fillna(0) e astype(float))
-        exog = exog.apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
-        return exog
+    # Seleção estrita apenas das features autorizadas para esta experiência
+    exog_train = train_df[features].astype(float)
+    exog_test = test_df[features].astype(float)
 
-    exog_train = prepare_exog(train_df)
-    exog_test = prepare_exog(test_df)
-    
-    y_train = train_df['y'].astype(float).fillna(0)
-    y_test = test_df['y'].astype(float).fillna(0)
-    
-    # MISSÃO: Garantir que os índices do endog e exog estão perfeitamente alinhados
-    exog_train = exog_train.loc[y_train.index]
-    exog_test = exog_test.loc[y_test.index]
-    
-    # 2. Configuração do Modelo SARIMAX estável
-    # Ordem (1,0,1): AR(1) + MA(1) sem diferenciação regular — a série de vendas
-    # diárias é estacionária em média após remoção da sazonalidade semanal.
-    # Ordem sazonal (0,1,1,7): uma diferenciação sazonal + MA sazonal de ordem 1,
-    # equivalente ao modelo "airline" de Box-Jenkins. Elimina a dupla diferenciação
-    # (1,1,1)(1,1,1)7 que causava explosão numérica e ConvergenceWarnings.
-    model = SARIMAX(
-        y_train,
-        exog=exog_train,
-        order=(1, 0, 1),
-        seasonal_order=(0, 1, 1, 7),
-        enforce_stationarity=False,
-        enforce_invertibility=False,
-    )
-
-    # Ajuste silencioso; maxiter=200 para garantir convergência sem timeout
-    results = model.fit(disp=False, maxiter=200)
-    
-    # 3. Geração de Previsões e Cálculo de Métricas Consistentes
-    y_pred = results.forecast(steps=len(y_test), exog=exog_test)
-    y_pred_vals = np.nan_to_num(y_pred.values) # Segurança extra: converte NaNs em 0 na previsão
+    # Configuração SARIMAX: Ordem (1,1,1) e Sazonal (1,1,1,7)
+    model = SARIMAX(y_train, exog=exog_train, order=(1,1,1), seasonal_order=(1,1,1,7)).fit(disp=False)
+    y_pred = model.forecast(steps=len(y_test), exog=exog_test)
     
     metrics = {
-        'MAE': mean_absolute_error(y_test, y_pred_vals),
-        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_vals)),
-        'MAPE': calculate_mape(y_test, y_pred_vals)
+        'MAE': mean_absolute_error(y_test, y_pred),
+        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
+        'MAPE': calculate_mape(y_test, y_pred)
     }
     
-    return metrics, y_pred_vals
+    return metrics, y_pred.values
 
 def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_features=None, experiment_name='Default'):
     """
@@ -148,16 +110,16 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     # Carregamento do dataset pré-processado
     df = pd.read_csv(file_path, parse_dates=['ds'])
     
-    # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' (Causalidade)
+    # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' e 'Num_Customers' (Causalidade/Leakage)
     features_all = [
-        'Num_Customers', 'Pct_On_Sale', 'TouristEvent',
-        'is_holiday', 'day_of_week', 'IsWeekend', 'is_weekend', 'month', 'season_num',
-        'sales_lag_1', 'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
-        'customers_lag_1', 'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
-        'sales_roll_mean_7', 'sales_roll_std_7'
+        'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 
+        'day_of_week', 'is_weekend', 'month', 'season_num',
+        'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
+        'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
+        'customers_roll_mean_7', 'customers_roll_std_7'
     ]
     
-    # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo disponível.
+    # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo.
     features = custom_features if custom_features is not None else [f for f in features_all if f in df.columns]
     
     logger.info(f"  [{store_name}] Variáveis utilizadas: {len(features)}")
@@ -173,6 +135,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     plot_data = {}
 
     # 1. Cenário Base: Seasonal Naive (Tarefa do Lucas)
+    # Estratégia: Utiliza o valor de há exatamente 7 dias como previsão para hoje
     y_pred_naive = test_df['sales_lag_7'].values
     store_metrics.append({
         'Model': 'Seasonal Naive',
@@ -206,7 +169,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     })
     plot_data['Random Forest'] = y_pred_rf
     
-    # Persistência do modelo para futura utilização na fase de Otimização (W5)
+    # Gravação do modelo (Persistência) para utilização futura na fase de Otimização (NSGA-II)
     if not os.path.exists('models'): os.makedirs('models')
     joblib.dump(rf, f'models/{store_name}_rf_model.pkl')
 
@@ -225,7 +188,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     except Exception as e:
         logger.error(f"  [{store_name}] Falha no Holt-Winters: {e}")
 
-    # 5. Facebook Prophet (Séries Temporais Estatísticas - Tarefa do António)
+    # 5. Facebook Prophet (Módulos Baseados em Decomposição - Tarefa do António)
     try:
         m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
         for col in features:
@@ -241,12 +204,15 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         })
         plot_data['Prophet'] = y_pred_prophet
 
-        # EXPORTAÇÃO DOS COMPONENTES DO PROPHET (Anatomia da Série)
-        results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
-        os.makedirs(results_subpath, exist_ok=True)
+        # NOVO: EXPORTAÇÃO DOS COMPONENTES DO PROPHET (Anatomia da Série)
+        # Capturamos a tendência e as sazonalidades para o dashboard ultra
+        # Note: 'weekly' e 'yearly' podem não existir se não houver dados suficientes
         comp_cols = ['ds', 'trend']
         if 'weekly' in forecast.columns: comp_cols.append('weekly')
         if 'yearly' in forecast.columns: comp_cols.append('yearly')
+        
+        results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+        os.makedirs(results_subpath, exist_ok=True)
         forecast[comp_cols].to_csv(os.path.join(results_subpath, "prophet_components.csv"), index=False)
 
     except Exception as e:
@@ -254,34 +220,64 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
 
     # 6. SARIMAX (Nova Implementação Robusta - Requisito Prof.)
     try:
-        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df)
+        metrics_sarimax, y_pred_sarimax = train_sarimax(train_df, test_df, features)
         store_metrics.append({
             'Model': 'SARIMAX',
             **metrics_sarimax
         })
         plot_data['SARIMAX'] = y_pred_sarimax
     except Exception as e:
-        logger.error(f"  [{store_name}] Falha crítica no modelo SARIMAX: {e}")
+        logger.error(f"  [{store_name}] Falha no SARIMAX: {e}")
+
+    # --- 7. MODELO ENSEMBLE ADAPTATIVO (PROFESSIONAL TOP-3) ---
+    try:
+        # Filtrar modelos inteligentes (ignorar o baseline para não degradar o ensemble)
+        intelligent_models = [m for m in store_metrics if m['Model'] != 'Seasonal Naive']
+        
+        if len(intelligent_models) >= 2:
+            # Ordenar por RMSE (menor é melhor) e pegar no Top 3 (ou Top 2 se houver poucos)
+            n_top = min(3, len(intelligent_models))
+            top_metrics = sorted(intelligent_models, key=lambda x: x['RMSE'])[:n_top]
+            top_names = [m['Model'] for m in top_metrics]
+            
+            # Extrair as previsões correspondentes
+            preds_to_average = [plot_data[name] for name in top_names if name in plot_data]
+            
+            if preds_to_average:
+                y_pred_ensemble = np.mean(preds_to_average, axis=0)
+                
+                # Adicionar métricas do Ensemble
+                store_metrics.append({
+                    'Model': 'Ensemble (Top-3 Experts)',
+                    'MAE': mean_absolute_error(y_test, y_pred_ensemble),
+                    'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_ensemble)),
+                    'MAPE': calculate_mape(y_test, y_pred_ensemble)
+                })
+                plot_data['Ensemble (Top-3 Experts)'] = y_pred_ensemble
+                logger.info(f"  [{store_name}] Ensemble criado com base em: {', '.join(top_names)}")
+    except Exception as e:
+        logger.error(f"  [{store_name}] Falha ao criar Ensemble: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
     results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
-    os.makedirs(results_subpath, exist_ok=True)
     plot_forecast_results(store_name, y_test, plot_data, results_subpath)
 
-    # EXPORTAÇÃO DE DADOS BRUTOS PARA PLOTLY
+    # NOVO: EXPORTAÇÃO DE DADOS BRUTOS PARA PLOTLY
+    # Criamos um DataFrame consolidado com Datas, Real e Previsões
     forecast_df = pd.DataFrame({'Date': test_df['ds'].values, 'Actual': y_test.values})
     for model_name, y_pred in plot_data.items():
         forecast_df[model_name] = y_pred
+    
     forecast_df.to_csv(os.path.join(results_subpath, "forecast_values.csv"), index=False)
 
-    # EXPORTAÇÃO DE IMPORTÂNCIA DE VARIÁVEIS (BASEADO NO RANDOM FOREST)
+    # NOVO: EXPORTAÇÃO DE IMPORTÂNCIA DE VARIÁVEIS (BASEADO NO RANDOM FOREST)
     importance_df = pd.DataFrame({
         'Feature': features,
         'Importance': rf.feature_importances_
     }).sort_values(by='Importance', ascending=False)
     importance_df.to_csv(os.path.join(results_subpath, "feature_importance.csv"), index=False)
 
-    # Consolidação das métricas com identificador da experiência
+    # Consolidação das métricas finais com o identificador da experiência atual
     metrics_df = pd.DataFrame(store_metrics)
     metrics_df['Experiment'] = experiment_name
     metrics_df.to_csv(os.path.join(results_subpath, "store_metrics.csv"), index=False)

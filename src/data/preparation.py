@@ -59,14 +59,29 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     # 6. Feature Engineering - Atributos Temporais
     df['is_holiday'] = df['Date'].apply(lambda x: 1 if x in us_holidays else 0)
     df['day_of_week'] = df['Date'].dt.dayofweek
-    df['IsWeekend'] = (df['day_of_week'] >= 5).astype(int)
+    df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
     df['month'] = df['Date'].dt.month
     df['year'] = df['Date'].dt.year
     df['season_num'] = df['Date'].apply(get_season).map({'Winter': 0, 'Spring': 1, 'Summer': 2, 'Autumn': 3})
     
-    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 1-7 e 28 dias)
-    # Crucial para capturar a persistência de curto prazo e ciclos semanais
-    for lag in [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]:
+    # 6.1 Contexto Avançado: Dias para o Próximo Feriado (Shopping Rush)
+    # Identifica a proximidade de grandes eventos para capturar o aumento antecipado de vendas
+    all_dates = df['Date'].unique()
+    min_date, max_date = all_dates.min(), all_dates.max()
+    relevant_holidays = sorted([d for d in us_holidays[min_date : max_date + pd.Timedelta(days=45)]])
+    
+    def days_until_next(current_date):
+        for h in relevant_holidays:
+            if h >= current_date.date():
+                return (pd.Timestamp(h) - current_date).days
+        return 30
+    
+    df['days_to_next_holiday'] = df['Date'].apply(days_until_next)
+    logger.info(f"  [{store_name}] Feature 'days_to_next_holiday' gerada com sucesso.")
+    
+    # 7. Atributos de Forecasting - Atrasos Temporais (Lags de 1, 7, 14, 21, 28 dias)
+    # O lag 1 (vendas de ontem) é crucial para capturar a persistência de curto prazo.
+    for lag in [1, 7, 14, 21, 28]:
         df[f'sales_lag_{lag}'] = df['Sales'].shift(lag)
         df[f'customers_lag_{lag}'] = df['Num_Customers'].shift(lag)
         
