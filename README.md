@@ -33,15 +33,21 @@ Diferente de abordagens básicas, este sistema avalia automaticamente três cen�
 *   **Prophet (Meta)**: Abordagem Bayesiana robusta a anomalias e feriados complexos.
 *   **Random Forest & Linear Regression**: Abordagem de Machine Learning para capturar correlações não lineares.
 *   **Holt-Winters**: Suavização exponencial tripla para padrões puramente sazonais.
+*   **Modelos de Regras Probabilísticos**:
+    *   **Poisson (GLM)**: Previsão precisa da chegada diária de clientes face ao baseline histórico.
+    *   **Gaussiano (OLS)**: Modelação da variabilidade das vendas, gerando cenários de IC 95% (Pessimista/Realista/Otimista).
+    *   **Logístico**: Modelação da probabilidade de alta conversão de clientes mediante a aplicação de descontos.
 
 ---
 
 ## 💎 Dashboard (Streamlit)
 O sistema inclui uma interface de visualização interativa (Plotly) que oferece:
-*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências e IA.
+*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências, Inteligência de IA e **Modelos de Regras**.
 *   **Análise de Resíduos**: Visualização estatística para validar a honestidade dos modelos.
 *   **XAI (Explainable AI)**: Gráficos de importância de variáveis para explicar os drivers do negócio.
+*   **Regras Probabilísticas**: Visualização interativa com filtros das distribuições de clientes (Poisson), simulação de cenários de vendas (Gaussiano) e curvas de conversão por desconto (Logístico).
 *   **KPI Financeiro**: Estimativa de poupança financeira comparando a IA com o baseline.
+
 
 ---
 
@@ -49,6 +55,8 @@ O sistema inclui uma interface de visualização interativa (Plotly) que oferece
 
 1.  **Motor de Cálculo**: `python main_pipeline.py` (Processa e gera todos os relatórios).
 2.  **Interface DSS**: `streamlit run dss_app/app.py` (Lança o dashboard interativo).
+3.  **Teste dos Modelos Probabilísticos**: `python src/optimization/probabilistic_models.py` (Executa um self-test dos modelos de regras e imprime os resultados na consola).
+
 
 ---
 
