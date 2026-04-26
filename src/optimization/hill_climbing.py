@@ -3,7 +3,7 @@ import random
 import sys
 import os
 import matplotlib
-matplotlib.use('Agg') # O truque para o Ubuntu (Não tenta abrir janelas!)
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +30,7 @@ def generate_neighbor(solution):
 
 def evaluate_solution(solution, store, forecast_customers, forecast_is_weekend):
     f1, f2, f3 = optimize_weekly_wrapper(solution, store, forecast_customers, forecast_is_weekend)
-    # CENÁRIO 1: Queremos apenas maximizar o Lucro (f1) para o Relatório!
+    # CENÁRIO 1: Queremos apenas maximizar o Lucro (f1) 
     return f1
 
 def hill_climbing(store, forecast_customers, forecast_is_weekend, iterations=1000):
@@ -60,10 +60,10 @@ if __name__ == "__main__":
     # Inverter o f1 para voltar a ser o Lucro real positivo
     history_lucro = [-x for x in history]
 
-    print(f"✅ SUCESSO! Lucro Máximo Alcançado: ${history_lucro[-1]:.2f}")
+    print(f"SUCESSO! Lucro Máximo Alcançado: ${history_lucro[-1]:.2f}")
     
     # -----------------------------------------------------
-    # SALVAR A IMAGEM EM VEZ DE TENTAR ABRIR (RESOLVE O ERRO)
+    # SALVAR A IMAGEM EM VEZ DE TENTAR ABRIR
     # -----------------------------------------------------
     out_dir = os.path.join(SRC_DIR, "..", "results")
     os.makedirs(out_dir, exist_ok=True)
@@ -78,4 +78,4 @@ if __name__ == "__main__":
     plt.savefig(img_path)
     plt.close()
     
-    print(f"📊 Gráfico guardado com sucesso em: {img_path}")
+    print(f"Gráfico guardado com sucesso em: {img_path}")
