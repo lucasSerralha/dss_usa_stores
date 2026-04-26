@@ -1,5 +1,6 @@
 import streamlit as st
 import sys
+import os
 import pandas as pd
 
 # Bloqueio de criação de pastas __pycache__ (Manter repositório imaculado)
@@ -159,7 +160,7 @@ if df_history is not None:
     st.markdown("---")
 
     # --- ULTRA-TABS NAVIGATION ---
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Previsão de Vendas", "🔍 Diagnóstico Técnico", "🧬 Decomposição Temporal", "🧠 Inteligência de IA"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Previsão de Vendas", "🔍 Diagnóstico Técnico", "🧬 Decomposição Temporal", "🧠 Inteligência de IA", "🎲 Modelos de Regras"])
 
     # --- TAB 1: PREVISÃO (CLEAN & INTERACTIVE) ---
     with tab1:
@@ -284,6 +285,216 @@ if df_history is not None:
             st.plotly_chart(fig_feat, use_container_width=True, theme="streamlit")
         else:
             st.warning("Análise de importância não disponível.")
+
+    # --- TAB 5: MODELOS DE REGRAS PROBABILÍSTICOS ---
+    with tab5:
+        st.subheader("🎲 Modelos de Regras Probabilísticos")
+        st.markdown(
+            '<p style="font-style: italic; margin-top: -10px; margin-bottom: 10px; opacity: 0.8;">' +
+            'Três modelos estatísticos baseados em regras de comportamento: Poisson (chegada de clientes), '
+            'Gaussiano (variabilidade das vendas) e Logístico (conversão via desconto).</p>',
+            unsafe_allow_html=True
+        )
+
+        # Bootstrap do path para importar os modelos
+        _app_dir = os.path.dirname(os.path.abspath(__file__))
+        _src_dir = os.path.abspath(os.path.join(_app_dir, "..", "src"))
+        if _src_dir not in sys.path:
+            sys.path.insert(0, _src_dir)
+
+        # ── Filtros: mostrar/esconder cada modelo ─────────────────────────────
+        st.markdown("""
+            <style>
+            div[data-testid="stCheckbox"] {
+                border: 1px solid #30363d;
+                border-radius: 10px;
+                padding: 10px 16px;
+                transition: border-color 0.2s, background 0.2s;
+                cursor: pointer;
+            }
+            div[data-testid="stCheckbox"]:hover {
+                border-color: #4A90E2;
+                background: rgba(74, 144, 226, 0.06);
+            }
+            div[data-testid="stCheckbox"] label {
+                font-weight: 600;
+                font-size: 0.95rem;
+                white-space: nowrap;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        col_cb1, col_cb2, col_cb3, _ = st.columns([2, 2, 2, 1])
+        with col_cb1:
+            show_poisson  = st.checkbox("📈 Modelo 1 — Poisson",   value=True)
+        with col_cb2:
+            show_gauss    = st.checkbox("📊 Modelo 2 — Gaussiano", value=True)
+        with col_cb3:
+            show_logistic = st.checkbox("🎯 Modelo 3 — Logístico", value=True)
+
+        st.markdown("---")
+
+        try:
+            import numpy as np
+            from optimization.probabilistic_models import (
+                PoissonArrivalModel, GaussianSalesModel,
+                LogisticConversionModel, compare_with_forecasting
+            )
+
+            # Carregar dados da loja seleccionada
+            _data_path = os.path.abspath(
+                os.path.join(_app_dir, "..", "data", "processed", f"{loja_sel}_processed.csv")
+            )
+
+            if not os.path.exists(_data_path):
+                st.warning(f"Dados processados não encontrados para {loja_sel_raw}. Corre primeiro o pipeline.")
+            else:
+                df_loja_prob = pd.read_csv(_data_path, parse_dates=["Date"])
+
+                # ── Treinar os 3 modelos ──────────────────────────────────────
+                with st.spinner("A treinar os modelos probabilísticos..."):
+                    pm = PoissonArrivalModel()
+                    pm.fit(df_loja_prob, store=loja_sel)
+
+                    gm = GaussianSalesModel()
+                    gm.fit(df_loja_prob, store=loja_sel)
+
+                    lm = LogisticConversionModel()
+                    lm.fit(df_loja_prob, store=loja_sel)
+
+                # Definir a semana de teste comum a todos os modelos
+                split = int(len(df_loja_prob) * 0.8)
+                test_week = df_loja_prob.iloc[split:split + 7].copy()
+                _day_map = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
+                day_labels = [_day_map.get(int(r), f"Dia {i+1}") for i, r in enumerate(test_week["day_of_week"])]
+                is_weekend_week = test_week["is_weekend"].astype(bool).tolist()
+
+                # ── POISSON ───────────────────────────────────────────────────
+                if show_poisson:
+                    st.markdown('<div class="sub-topic-box">📈 Modelo 1 — Poisson: Previsão de Chegada de Clientes</div>', unsafe_allow_html=True)
+
+                    # Prever para a semana de teste real
+                    X_test_poisson = test_week[[f for f in pm._features if f in test_week.columns]]
+                    lambdas = pm.predict_lambda(X_test_poisson)
+
+                    col_p1, col_p2 = st.columns([2, 1])
+                    with col_p1:
+                        fig_poisson = go.Figure(go.Bar(
+                            x=day_labels,
+                            y=[round(l) for l in lambdas],
+                            marker_color=["#FF9800" if w else "#4A90E2" for w in is_weekend_week],
+                            text=[str(round(l)) for l in lambdas],
+                            textposition="outside",
+                        ))
+                        fig_poisson.update_layout(
+                            title="Clientes Previstos por Dia (próxima semana)",
+                            xaxis_title="Dia", yaxis_title="Nº de Clientes (λ)",
+                            margin=dict(t=60, b=10, l=10, r=10),
+                            showlegend=False,
+                        )
+                        st.plotly_chart(fig_poisson, use_container_width=True, theme="streamlit")
+
+                    with col_p2:
+                        cmp_df = compare_with_forecasting(df_loja_prob, pm, store=loja_sel)
+                        st.markdown("**Comparação com Baseline Lag-7**")
+                        st.dataframe(cmp_df[["modelo", "MAE", "RMSE"]].rename(
+                            columns={"modelo": "Método", "MAE": "MAE (clientes)", "RMSE": "RMSE"}
+                        ), hide_index=True, use_container_width=True)
+                        melhoria = round((1 - cmp_df.iloc[0]["MAE"] / cmp_df.iloc[1]["MAE"]) * 100, 1)
+                        st.success(f"O Poisson é **{melhoria}% mais preciso** que o baseline histórico.")
+
+                    if show_gauss or show_logistic:
+                        st.markdown("---")
+
+                # ── GAUSSIANO ─────────────────────────────────────────────────
+                if show_gauss:
+                    st.markdown('<div class="sub-topic-box">📊 Modelo 2 — Gaussiano: Variabilidade das Vendas</div>', unsafe_allow_html=True)
+
+                    scenarios = gm.predict_scenarios(test_week)
+                    lower_95, upper_95 = gm.confidence_interval(test_week, confidence=0.95)
+
+                    fig_gauss = go.Figure()
+                    # Usar nomes dos dias em vez de datas especificas
+                    _day_map = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
+                    x_labels = [_day_map.get(int(r), f"Dia {i+1}") for i, r in
+                                enumerate(test_week["day_of_week"])] if "day_of_week" in test_week.columns \
+                                else [f"Dia {i+1}" for i in range(len(test_week))]
+                    fig_gauss.add_trace(go.Scatter(x=x_labels, y=upper_95, mode="lines", line=dict(width=0), showlegend=False))
+                    fig_gauss.add_trace(go.Scatter(
+                        x=x_labels, y=lower_95, mode="lines", line=dict(width=0),
+                        fill="tonexty", fillcolor="rgba(74,144,226,0.15)", name="IC 95%"
+                    ))
+                    fig_gauss.add_trace(go.Scatter(x=x_labels, y=scenarios["pessimistic"], mode="lines+markers",
+                                                   line=dict(color="#E74C3C", dash="dot"), name="Pessimista"))
+                    fig_gauss.add_trace(go.Scatter(x=x_labels, y=scenarios["realistic"], mode="lines+markers",
+                                                   line=dict(color="#4A90E2", width=3), name="Realista"))
+                    fig_gauss.add_trace(go.Scatter(x=x_labels, y=scenarios["optimistic"], mode="lines+markers",
+                                                   line=dict(color="#2ECC71", dash="dot"), name="Otimista"))
+                    
+                    # Adicionar a linha do que "Realmente Aconteceu" (Vendas Reais)
+                    target_col = "y" if "y" in test_week.columns else "Sales"
+                    y_true = test_week[target_col].values
+                    fig_gauss.add_trace(go.Scatter(x=x_labels, y=y_true, mode="lines+markers",
+                                                   line=dict(color="#F1C40F", width=4), 
+                                                   marker=dict(symbol="star", size=10, color="#2C3E50", line=dict(width=2, color="#F1C40F")),
+                                                   name="Vendas Reais (Realidade)"))
+
+                    fig_gauss.update_layout(
+                        title=f"Cenários de Vendas — σ = ${gm.sigma:,.0f} | μ global = ${gm.mu_global:,.0f}",
+                        xaxis_title="Dia da Semana", yaxis_title="Vendas ($)",
+                        margin=dict(t=60, b=10, l=10, r=10),
+                        hovermode="x unified",
+                    )
+                    st.plotly_chart(fig_gauss, use_container_width=True, theme="streamlit")
+
+                    if show_logistic:
+                        st.markdown("---")
+
+                # ── LOGÍSTICO ─────────────────────────────────────────────────
+                if show_logistic:
+                    st.markdown('<div class="sub-topic-box">🎯 Modelo 3 — Logístico: Probabilidade de Conversão via Desconto</div>', unsafe_allow_html=True)
+
+                    pr_range = np.linspace(0.0, 0.30, 60)
+                    p_weekday = lm.conversion_curve(pr_range, is_weekend=0)
+                    p_weekend = lm.conversion_curve(pr_range, is_weekend=1)
+                    p_holiday = lm.conversion_curve(pr_range, is_weekend=0, is_holiday=1, days_to_next_holiday=0)
+
+                    col_l1, col_l2 = st.columns([2, 1])
+                    with col_l1:
+                        fig_logit = go.Figure()
+                        fig_logit.add_trace(go.Scatter(x=pr_range * 100, y=p_weekday, mode="lines",
+                                                       name="Dia de semana", line=dict(color="#4A90E2", width=3)))
+                        fig_logit.add_trace(go.Scatter(x=pr_range * 100, y=p_weekend, mode="lines",
+                                                       name="Fim-de-semana", line=dict(color="#FF9800", width=3)))
+                        fig_logit.add_trace(go.Scatter(x=pr_range * 100, y=p_holiday, mode="lines",
+                                                       name="Feriado", line=dict(color="#E74C3C", width=2, dash="dash")))
+                        fig_logit.add_hline(y=0.5, line_dash="dot", line_color="grey", annotation_text="50% conversão")
+                        fig_logit.update_layout(
+                            title=f"Curva de Conversão — AUC-ROC = {lm.auc:.3f}",
+                            xaxis_title="Desconto Aplicado (%)", yaxis_title="P(Conversão)",
+                            yaxis=dict(tickformat=".0%", range=[0, 1]),
+                            margin=dict(t=60, b=10, l=10, r=10),
+                            hovermode="x unified",
+                        )
+                        st.plotly_chart(fig_logit, use_container_width=True, theme="streamlit")
+
+                    with col_l2:
+                        st.metric("AUC-ROC", f"{lm.auc:.3f}", help="1.0 = perfeito | 0.5 = aleatório")
+                        st.metric("Threshold", f"${lm.threshold:,.1f}/cliente")
+                        st.info(
+                            "**Desconto tem retornos decrescentes.**\n\n"
+                            f"Com 0% de desconto, P(conv) = {lm.conversion_curve(np.array([0.0]))[0]*100:.1f}%.\n"
+                            f"Com 30% de desconto, P(conv) = {lm.conversion_curve(np.array([0.30]))[0]*100:.1f}%."
+                        )
+
+                if not show_poisson and not show_gauss and not show_logistic:
+                    st.info("Seleciona pelo menos um modelo para visualizar.")
+
+        except ImportError as e:
+            st.error(f"Erro ao importar os modelos probabilísticos: {e}")
+        except Exception as e:
+            st.error(f"Erro inesperado: {e}")
+            st.exception(e)
 
 else:
     st.error("⚠️ Erro Crítico: Dados não encontrados.")
