@@ -1,0 +1,5 @@
+store,n_pareto,max_profit,min_profit,min_staff,max_staff,staff_at_max_profit,profit_at_min_staff
+baltimore,100,64120.0,-21210.0,2,64,64,-21210.0
+lancaster,100,77525.0,-16310.0,5,64,64,-16310.0
+philadelphia,100,62930.0,-19985.0,4,63,63,-19985.0
+richmond,100,68985.0,-17990.0,5,58,58,-17990.0

@@ -2,12 +2,12 @@ import os
 import sys
 import logging
 import pandas as pd
-
-# Bloqueio de criação de pastas __pycache__ (Manter repositório minimalista)
-sys.dont_write_bytecode = True
 import glob
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# Bloqueio de criação de pastas __pycache__ (Manter repositório minimalista)
+sys.dont_write_bytecode = True
 
 # Importação dos módulos de lógica de negócio
 from src.data.preparation import run_full_preparation
@@ -46,7 +46,7 @@ def main():
     Função principal que orquestra todo o fluxo de dados: Pré-processamento, Treino e Relatórios.
     """
     print("\n" + "="*60)
-    print("USA STORES FORECASTING - PIPELINE MESTRE (EDICAO SENIOR 2026)")
+    print("USA STORES FORECASTING - PIPELINE PRINCIPAL (EDIÇÃO SENIOR 2026)")
     print("="*60)
     
     # 0. CONFIGURAÇÃO DA ESTRUTURA DE DIRETÓRIOS (Arquitetura de Resultados)
@@ -71,9 +71,9 @@ def main():
     # Definição dos conjuntos de variáveis (Apostas Técnicas do António e do Professor)
     # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
     feature_sets = {
-        "A_Temporal_Base": ['day_of_week', 'is_weekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
+        "A_Temporal_Base": ['day_of_week', 'IsWeekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
         "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
-        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
+        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
     }
 
     master_results_list = []
@@ -97,10 +97,15 @@ def main():
     cols = ['Store', 'Experiment', 'Model', 'MAE', 'RMSE', 'MAPE']
     master_report_df = master_report_df[cols].sort_values(['Store', 'RMSE'])
     
-    # Exportação do Report Master
+    # Exportação do Report Master (Completo)
     report_path = os.path.join(results_base, '00_Master_Summary', 'fidelity_experimentation_report.csv')
     master_report_df.to_csv(report_path, index=False)
     logger.info(f"Relatório de experiências guardado em: {report_path}")
+
+    # MISSÃO: Exportar também para 'data/processed/final_model_report.csv' exigido pela DSS App
+    final_report_path = 'data/processed/final_model_report.csv'
+    master_report_df.to_csv(final_report_path, index=False)
+    logger.info(f"Ficheiro legado final_model_report.csv atualizado em: {final_report_path}")
     
     # Geração do Gráfico Resumo Geral
     summary_plot_path = os.path.join(results_base, '00_Master_Summary', 'model_comparison_summary.png')
@@ -108,7 +113,7 @@ def main():
     
     # Recomendação Automática do Melhor Modelo por Loja
     print("\n" + "="*80)
-    print("RANKING DE FIDEDIGNIDADE (MELHOR SETUP POR LOJA)")
+    print("RANKING DE FIDEDIGNIDADE (MELHOR CONFIGURAÇÃO POR LOJA)")
     print("="*80 + "\n")
     best_setups = master_report_df.groupby('Store').first().reset_index()
     print(best_setups.to_string(index=False))
