@@ -195,15 +195,21 @@ def main():
             )
 
         # --- Save Pareto CSV ---
+        store_out_dir = os.path.join(OUT_DIR, store.capitalize())
+        os.makedirs(store_out_dir, exist_ok=True)
+
+        pr_cols = np.stack([results["pareto_X"][:, d * 3] for d in range(N_DAYS)], axis=1)
         pareto_df = pd.DataFrame({
             "lucro": lucro,
             "staff": staff,
+            "desconto_medio": pr_cols.mean(axis=1).round(4) * 100,
         })
         for day_i in range(N_DAYS):
-            pareto_df[f"pr_{DAY_LABELS[day_i]}"]    = results["pareto_X"][:, day_i * 3].round(4)
-            pareto_df[f"hr_x_{DAY_LABELS[day_i]}"]  = np.round(results["pareto_X"][:, day_i * 3 + 1]).astype(int)
-            pareto_df[f"hr_j_{DAY_LABELS[day_i]}"]  = np.round(results["pareto_X"][:, day_i * 3 + 2]).astype(int)
-        pareto_df.to_csv(os.path.join(OUT_DIR, f"{store}_pareto.csv"), index=False)
+            pareto_df[f"pr_{DAY_LABELS[day_i]}"]   = results["pareto_X"][:, day_i * 3].round(4)
+            pareto_df[f"hr_x_{DAY_LABELS[day_i]}"] = np.round(results["pareto_X"][:, day_i * 3 + 1]).astype(int)
+            pareto_df[f"hr_j_{DAY_LABELS[day_i]}"] = np.round(results["pareto_X"][:, day_i * 3 + 2]).astype(int)
+        pareto_df.to_csv(os.path.join(store_out_dir, "pareto_front.csv"), index=False)
+        log.info("Pareto CSV saved → %s", os.path.join(store_out_dir, "pareto_front.csv"))
 
         # --- Plots ---
         plot_pareto_front(store, lucro, staff)

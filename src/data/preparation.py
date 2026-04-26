@@ -34,7 +34,7 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     
     # 2. Tratamento de Valores em Falta (Interpolação Linear)
     # Pct_On_Sale: Variável crítica para impacto promocional
-    df['Pct_On_Sale'] = df['Pct_On_Sale'].interpolate(method='linear').fillna(method='bfill')
+    df['Pct_On_Sale'] = df['Pct_On_Sale'].interpolate(method='linear').bfill()
     
     # 3. Tratamento de Anomalias (Dados Sujos)
     # Caso: Clientes = 0 mas Vendas > 0 (Erro de integridade de dados)
@@ -59,7 +59,7 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     # 6. Feature Engineering - Atributos Temporais
     df['is_holiday'] = df['Date'].apply(lambda x: 1 if x in us_holidays else 0)
     df['day_of_week'] = df['Date'].dt.dayofweek
-    df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
+    df['IsWeekend'] = (df['day_of_week'] >= 5).astype(int)
     df['month'] = df['Date'].dt.month
     df['year'] = df['Date'].dt.year
     df['season_num'] = df['Date'].apply(get_season).map({'Winter': 0, 'Spring': 1, 'Summer': 2, 'Autumn': 3})

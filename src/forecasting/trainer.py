@@ -87,8 +87,8 @@ def train_sarimax(train_df, test_df, features):
     exog_train = train_df[features].astype(float)
     exog_test = test_df[features].astype(float)
 
-    # Configuração SARIMAX: Ordem (1,1,1) e Sazonal (1,1,1,7)
-    model = SARIMAX(y_train, exog=exog_train, order=(1,1,1), seasonal_order=(1,1,1,7)).fit(disp=False)
+    # Modelo "airline" (Box-Jenkins): sem dupla diferenciação → elimina ConvergenceWarnings
+    model = SARIMAX(y_train, exog=exog_train, order=(1,0,1), seasonal_order=(0,1,1,7)).fit(disp=False, maxiter=200)
     y_pred = model.forecast(steps=len(y_test), exog=exog_test)
     
     metrics = {

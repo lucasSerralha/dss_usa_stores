@@ -136,8 +136,10 @@ Na primeira execução com `n_max_gen = 300`, as lojas Baltimore e Philadelphia 
 
 ```python
 # run_optimization.py — seleção dinâmica de n_max_gen por loja
-n_max_gen = 500 if store in ("baltimore", "philadelphia") else 300
+n_max_gen = 500 if store in ("baltimore", "lancaster", "philadelphia") else 300
 ```
+
+> **Nota (2026-04-26):** Lancaster foi também incluída no grupo de 500 gerações após a segunda execução completa revelar que a sua Fronteira de Pareto continuava a evoluir próximo do limite de 300 gerações.
 
 ---
 
@@ -182,5 +184,79 @@ seasonal_order=(0, 1, 1, 7) # diferenciação sazonal + MA sazonal; sem AR sazon
 | 1 | Desconto degenerado (pr → 0) | `profit_logic.py` | Novo parâmetro + lógica | Fronteira de Pareto explora desconto genuinamente |
 | 2 | Lucro fora de escala (€2k vs €70k) | `profit_logic.py` | Multiplicador × 35 | Valores interpretáveis em euros reais |
 | 3 | Staff de FDS sem restrição (até 27) | `nsga2_model.py` | Nova restrição G ≤ 12 | Planos operacionalmente viáveis |
-| 4 | Baltimore e Philadelphia sem convergência | `run_optimization.py` | n_max_gen 300 → 500 | Fronteira de Pareto convergida |
+| 4 | Baltimore, Lancaster e Philadelphia sem convergência | `run_optimization.py` | n_max_gen 300 → 500 | Fronteira de Pareto convergida |
 | 5 | SARIMAX RMSE 8–25× superior | `trainer.py` | Ordem (1,1,1)(1,1,1,7) → (1,0,1)(0,1,1,7) | Eliminação ConvergenceWarnings; RMSE competitivo |
+
+---
+
+## Secção 6 — Melhorias de Interface e Qualidade de Código (2026-04-26)
+
+Esta secção regista as melhorias implementadas após a validação da v2.0, centradas na interface de decisão e na robustez técnica do pipeline.
+
+---
+
+### 6.1 — Nova Aba de Otimização no DSS (Tab 5)
+
+**Ficheiro:** `dss_app/app.py`  
+**Função nova:** `load_optimization_data(loja)`
+
+#### Descrição
+
+A aplicação Streamlit passou a ter uma quinta aba — **"Otimização de Escalas"** — que expõe os resultados do NSGA-II diretamente ao utilizador-decisor, sem necessidade de consultar ficheiros CSV manualmente.
+
+**Conteúdo da aba:**
+
+1. **Gráfico 3D interativo** (Plotly): Fronteira de Pareto com eixos
+   - X: Total de Colaboradores/semana  
+   - Y: Desconto Médio (%)  
+   - Z: Lucro Semanal (€)  
+   - Escala de cor: `Blues` (gradiente de rentabilidade)
+
+2. **Métricas de destaque:** solução de máximo lucro, staff alocado e desconto médio correspondente
+
+3. **Tabela Top-10:** as 10 soluções Pareto-ótimas com maior lucro, ordenadas descendentemente
+
+**Caminho de dados lido:**
+```
+results/03_Optimization_Report/{Loja}/pareto_front.csv
+```
+
+---
+
+### 6.2 — Reestruturação do Output de Otimização
+
+**Ficheiro:** `run_optimization.py`
+
+#### Alteração
+
+| Antes | Depois |
+|-------|--------|
+| `results/03_Optimization_Report/{loja}_pareto.csv` | `results/03_Optimization_Report/{Loja}/pareto_front.csv` |
+
+Criação automática de subdiretório por loja (`os.makedirs(..., exist_ok=True)`), alinhando a estrutura com os restantes relatórios do pipeline (`02_Forecasting_Report/{Loja}/`).
+
+**Nova coluna adicionada ao CSV:** `desconto_medio` = média das 7 variáveis `pr_*` do vetor de otimização, expressa em percentagem. Permite à Tab 5 do DSS apresentar o desconto médio semanal sem recalculação.
+
+---
+
+### 6.3 — Compatibilidade Pandas 2.0+ e Nomenclatura
+
+**Ficheiro:** `src/data/preparation.py`
+
+| Linha | Antes | Depois | Motivo |
+|-------|-------|--------|--------|
+| 34 | `.fillna(method='bfill')` | `.bfill()` | `FutureWarning` pandas ≥ 2.0; API descontinuada |
+| 62 | `'is_weekend'` | `'IsWeekend'` | Consistência com `CamelCase` das restantes features (`IsWeekend` usado em todos os cenários A/B/C) |
+
+---
+
+### 6.4 — Simplificação Visual do DSS
+
+**Ficheiro:** `dss_app/app.py`
+
+A interface foi profissionalizada para contexto empresarial:
+
+- Emojis removidos de títulos de página, tabs e sidebar
+- Paleta de cores neutral: `#34495e`, `#5c6a79`, `#7f8c8d` (substituindo as cores vivas anteriores)
+- Descrições das abas reescritas em linguagem técnica-analítica
+- Label "🧠 Inteligência de IA" → "Interpretabilidade Algorítmica"
