@@ -34,7 +34,7 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     
     # 2. Tratamento de Valores em Falta (Interpolação Linear)
     # Pct_On_Sale: Variável crítica para impacto promocional
-    df['Pct_On_Sale'] = df['Pct_On_Sale'].interpolate(method='linear').fillna(method='bfill')
+    df['Pct_On_Sale'] = df['Pct_On_Sale'].interpolate(method='linear').bfill()
     
     # 3. Tratamento de Anomalias (Dados Sujos)
     # Caso: Clientes = 0 mas Vendas > 0 (Erro de integridade de dados)
