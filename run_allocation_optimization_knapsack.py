@@ -22,7 +22,9 @@ sys.path.insert(0, "src")
 
 from utils.profit_logic_knapsack import (
     optimize_allocation_wrapper,
+    calculate_daily_metrics,
     STORE_PARAMS,
+    ELASTICITY_K,
 )
 from optimization.nsga2_model_knapsack import run_optimization
 from optimization.knapsack_solver import solve_mckp
@@ -108,6 +110,60 @@ def plot_allocation_summary(results, total_units):
     log.info("Grafico resumo guardado -> %s", path)
 
 
+def plot_store_plan(store, details, profit, units):
+    """Grafico do plano semanal de cada loja."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    days = [d["day_label"] for d in details]
+    hr_x = [d["hr_x"] for d in details]
+    hr_j = [d["hr_j"] for d in details]
+    pr = [d["pr"] for d in details]
+    day_units = [d["units"] for d in details]
+
+    x = np.arange(len(days))
+    w = 0.35
+
+    # --- Staff ---
+    ax = axes[0]
+    ax.bar(x - w / 2, hr_x, w, label="Peritos", color="#2196F3", alpha=0.85)
+    ax.bar(x + w / 2, hr_j, w, label="Juniores", color="#FF9800", alpha=0.85)
+    ax.set_xticks(x)
+    ax.set_xticklabels(days)
+    ax.set_title("Composicao de Staff")
+    ax.set_ylabel("Funcionarios")
+    ax.legend(fontsize=8)
+    ax.grid(axis="y", alpha=0.3)
+
+    # --- Desconto ---
+    ax = axes[1]
+    ax.bar(x, [p * 100 for p in pr], color="#4CAF50", alpha=0.85)
+    ax.set_xticks(x)
+    ax.set_xticklabels(days)
+    ax.set_title("Desconto Diario (%)")
+    ax.set_ylabel("Desconto (%)")
+    ax.set_ylim(0, 35)
+    ax.grid(axis="y", alpha=0.3)
+
+    # --- Unidades por dia ---
+    ax = axes[2]
+    ax.bar(x, day_units, color="#9C27B0", alpha=0.85)
+    ax.set_xticks(x)
+    ax.set_xticklabels(days)
+    ax.set_title("Unidades Vendidas por Dia")
+    ax.set_ylabel("Unidades")
+    ax.grid(axis="y", alpha=0.3)
+
+    fig.suptitle(
+        f"{store.capitalize()} - Lucro: EUR {profit:,.0f} | Unidades: {units:,}",
+        fontsize=13, fontweight="bold",
+    )
+    plt.tight_layout()
+    path = os.path.join(OUT_DIR, f"{store}_plan.png")
+    plt.savefig(path, dpi=150)
+    plt.close()
+    log.info("Grafico de plano guardado -> %s", path)
+
+
 def main():
     print("\n" + "=" * 70)
     print("  TIAPOSE - TAREFA 2 / OBJETIVO 2")
@@ -175,6 +231,21 @@ def main():
             d_p["day_label"] = day_labels[d_idx]
             d_p["is_weekend"] = inputs["is_weekend"][d_idx]
             d_p["customers_forecast"] = inputs["customers"][d_idx]
+            
+            # Recalcular clientes efetivos e unidades por dia para o grafico
+            pr_clean = d_p["pr"]
+            effective_customers = int(round(d_p["customers_forecast"] * (1 + ELASTICITY_K * pr_clean)))
+            
+            metrics = calculate_daily_metrics(
+                store=store,
+                is_weekend=d_p["is_weekend"],
+                customers=effective_customers,
+                pr=pr_clean,
+                hr_x=d_p["hr_x"],
+                hr_j=d_p["hr_j"]
+            )
+            d_p["units"] = metrics["units_x"] + metrics["units_j"]
+            
             detailed_plan.append(d_p)
             
         final_results[store] = {
@@ -195,6 +266,9 @@ def main():
         
         # Salvar plano detalhado por loja
         pd.DataFrame(detailed_plan).to_csv(os.path.join(OUT_DIR, f"{store}_plan.csv"), index=False)
+        
+        # Gerar grafico detalhado por loja
+        plot_store_plan(store, detailed_plan, profit, units)
 
     # Resumo Geral
     summary_df = pd.DataFrame(all_summaries)
