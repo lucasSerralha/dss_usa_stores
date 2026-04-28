@@ -71,7 +71,7 @@ def main():
     # Definição dos conjuntos de variáveis (Apostas Técnicas do António e do Professor)
     # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
     feature_sets = {
-        "A_Temporal_Base": ['day_of_week', 'IsWeekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
+        "A_Temporal_Base": ['day_of_week', 'is_weekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
         "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
         "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
     }
