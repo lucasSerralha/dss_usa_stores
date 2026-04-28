@@ -116,7 +116,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         'day_of_week', 'is_weekend', 'month', 'season_num',
         'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
         'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
-        'customers_roll_mean_7', 'customers_roll_std_7'
+        'sales_roll_mean_7', 'sales_roll_std_7'
     ]
     
     # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo.
