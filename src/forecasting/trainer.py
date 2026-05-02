@@ -211,7 +211,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         if 'weekly' in forecast.columns: comp_cols.append('weekly')
         if 'yearly' in forecast.columns: comp_cols.append('yearly')
         
-        results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+        results_subpath = os.path.join(output_dir, '02_Forecasting', store_name.capitalize(), experiment_name)
         os.makedirs(results_subpath, exist_ok=True)
         forecast[comp_cols].to_csv(os.path.join(results_subpath, "prophet_components.csv"), index=False)
 
@@ -259,7 +259,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         logger.error(f"  [{store_name}] Falha ao criar Ensemble: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
-    results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+    results_subpath = os.path.join(output_dir, '02_Forecasting', store_name.capitalize(), experiment_name)
     plot_forecast_results(store_name, y_test, plot_data, results_subpath)
 
     # NOVO: EXPORTAÇÃO DE DADOS BRUTOS PARA PLOTLY

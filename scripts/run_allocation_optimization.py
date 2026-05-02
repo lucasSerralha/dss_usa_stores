@@ -8,7 +8,7 @@ Maximizar o lucro TOTAL das 4 lojas, sujeito a:
 Algoritmo: Hill Climbing com Random Restarts + Penalty Function
 Vetor de decisao: 84 variaveis (21 por loja x 4 lojas)
 
-Resultados guardados em: results/02_Allocation_Optimization/
+Resultados guardados em: results/03_Optimization/allocation/
 """
 
 import sys
@@ -71,7 +71,7 @@ N_VARS_TOTAL = N_STORES * N_VARS_PER_STORE  # 84
 UNIT_CAP = 10_000  # Teto de unidades de venda
 PENALTY_COEFF = 50  # Coeficiente de penalizacao por unidade excedente
 
-OUT_DIR = "results/02_Allocation_Optimization"
+OUT_DIR = "results/03_Optimization/allocation"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

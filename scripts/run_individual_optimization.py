@@ -5,7 +5,7 @@ run_individual_optimization.py — Tarefa 1: Otimização Individual por Loja
 Algoritmo: Hill Climbing com Random Restarts
 Objetivo único: Maximizar o lucro semanal (f1) para cada loja individualmente.
 
-Resultados guardados em: results/01_Individual_Optimization/
+Resultados guardados em: results/03_Optimization/individual/
 """
 
 import sys
@@ -55,7 +55,7 @@ FORECAST_INPUTS = {
 
 DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 STORES = list(FORECAST_INPUTS.keys())
-OUT_DIR = "results/01_Individual_Optimization"
+OUT_DIR = "results/03_Optimization/individual"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

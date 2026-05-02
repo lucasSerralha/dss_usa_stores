@@ -47,7 +47,7 @@ def run_diagnostics(file_path):
         print("Resultado: Não há evidência para rejeitar a hipótese de distribuição Normal.")
 
     # 3. Visualização
-    output_dir = "results/04_Model_Testing/Gaussiano"
+    output_dir = "results/04_Model_Testing/gaussiano"
     output_plot = os.path.join(output_dir, f"gaussiano_diagnostic_{store_name}.png")
     os.makedirs(output_dir, exist_ok=True)
     

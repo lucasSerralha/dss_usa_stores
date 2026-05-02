@@ -2,7 +2,7 @@
 run_optimization.py — Full NSGA-II Optimization for all TIAPOSE stores.
 
 Uses the last observed week (2014-06-08 to 2014-06-14, Sun→Sat) as the
-forecast input horizon. Results are saved to results/03_Optimization_Report/.
+forecast input horizon. Results are saved to results/03_Optimization/multiobjective/.
 """
 
 import sys
@@ -52,7 +52,7 @@ FORECAST_INPUTS = {
 
 DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 STORES = list(FORECAST_INPUTS.keys())
-OUT_DIR = "results/03_Optimization_Report"
+OUT_DIR = "results/03_Optimization/multiobjective"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

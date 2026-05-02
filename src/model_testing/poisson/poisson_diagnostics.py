@@ -56,7 +56,7 @@ def run_diagnostics(file_path):
         print("Resultado: Não há evidência para rejeitar a hipótese de distribuição de Poisson.")
 
     # 3. Visualização (Opcional - salva se o diretório existir)
-    output_dir = "results/04_Model_Testing/Poisson"
+    output_dir = "results/04_Model_Testing/poisson"
     output_plot = os.path.join(output_dir, f"poisson_diagnostic_{store_name}.png")
     os.makedirs(output_dir, exist_ok=True)
     

@@ -61,7 +61,7 @@ FORECAST_INPUTS = {
 STORES = list(FORECAST_INPUTS.keys())
 UNIT_CAP = 10_000
 
-OUT_DIR = "results/02_Allocation_Optimization_Knapsack"
+OUT_DIR = "results/03_Optimization/allocation_knapsack"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

@@ -18,7 +18,7 @@ def generate_acf_plots():
     df = df.sort_values('Date')
     
     # Criar pasta de resultados se não existir
-    out_dir = os.path.join(base_dir, 'results', '01_EDA_Gallery')
+    out_dir = os.path.join(base_dir, 'results', '01_EDA')
     os.makedirs(out_dir, exist_ok=True)
 
     # Plot ACF (Autocorrelação) - Mostra picos a cada 7 dias

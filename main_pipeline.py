@@ -51,7 +51,7 @@ def main():
     
     # 0. CONFIGURAÇÃO DA ESTRUTURA DE DIRETÓRIOS (Arquitetura de Resultados)
     results_base = 'results'
-    subdirs = ['00_Master_Summary', '01_EDA_Gallery', '02_Forecasting_Report']
+    subdirs = ['00_Master_Summary', '01_EDA', '02_Forecasting']
     for sd in subdirs:
         os.makedirs(os.path.join(results_base, sd), exist_ok=True)
 

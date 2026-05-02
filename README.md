@@ -54,8 +54,14 @@ O sistema inclui uma interface de visualização interativa (Plotly) que oferece
 ## 🚀 Como Executar
 
 1.  **Motor de Cálculo**: `python main_pipeline.py` (Processa e gera todos os relatórios).
-2.  **Interface DSS**: `streamlit run dss_app/app.py` (Lança o dashboard interativo).
+2.  **Interface DSS**: `streamlit run app.py` (Lança o dashboard interativo).
 3.  **Teste dos Modelos Probabilísticos**: `python src/optimization/probabilistic_models.py` (Executa um self-test dos modelos de regras e imprime os resultados na consola).
+
+### Scripts de Otimização (executar da raiz do projeto)
+- `python scripts/run_individual_optimization.py` — Tarefa 1: Hill Climbing por loja
+- `python scripts/run_allocation_optimization.py` — Tarefa 2: Alocação conjunta com Hill Climbing
+- `python scripts/run_allocation_optimization_knapsack.py` — Tarefa 2 (Knapsack): Alocação via NSGA-II + Programação Dinâmica
+- `python scripts/run_optimization.py` — Tarefa 3: NSGA-II multi-objetivo (Lucro vs Staff)
 
 
 ---
