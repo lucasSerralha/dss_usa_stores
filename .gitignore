@@ -9,5 +9,7 @@ data/*.csv
 .idea/
 *.pkl
 data/processed/*.csv
-CLAUDE.md
 .claude/
+comentários.txt
+.claude-code/
+CLAUDE.md
