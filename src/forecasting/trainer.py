@@ -116,7 +116,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         'day_of_week', 'is_weekend', 'month', 'season_num',
         'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
         'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
-        'customers_roll_mean_7', 'customers_roll_std_7'
+        'sales_roll_mean_7', 'sales_roll_std_7'
     ]
     
     # Se existirem custom_features, usamos essas. Caso contrário, usamos o set completo.
@@ -211,7 +211,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         if 'weekly' in forecast.columns: comp_cols.append('weekly')
         if 'yearly' in forecast.columns: comp_cols.append('yearly')
         
-        results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+        results_subpath = os.path.join(output_dir, '02_Forecasting', store_name.capitalize(), experiment_name)
         os.makedirs(results_subpath, exist_ok=True)
         forecast[comp_cols].to_csv(os.path.join(results_subpath, "prophet_components.csv"), index=False)
 
@@ -259,7 +259,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         logger.error(f"  [{store_name}] Falha ao criar Ensemble: {e}")
 
     # EXPORTAÇÃO DA GALERIA VISUAL E MÉTRICAS POR LOJA
-    results_subpath = os.path.join(output_dir, '02_Forecasting_Report', store_name.capitalize(), experiment_name)
+    results_subpath = os.path.join(output_dir, '02_Forecasting', store_name.capitalize(), experiment_name)
     plot_forecast_results(store_name, y_test, plot_data, results_subpath)
 
     # NOVO: EXPORTAÇÃO DE DADOS BRUTOS PARA PLOTLY

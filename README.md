@@ -33,22 +33,36 @@ Diferente de abordagens básicas, este sistema avalia automaticamente três cen�
 *   **Prophet (Meta)**: Abordagem Bayesiana robusta a anomalias e feriados complexos.
 *   **Random Forest & Linear Regression**: Abordagem de Machine Learning para capturar correlações não lineares.
 *   **Holt-Winters**: Suavização exponencial tripla para padrões puramente sazonais.
+*   **Modelos de Regras Probabilísticos**:
+    *   **Poisson (GLM)**: Previsão precisa da chegada diária de clientes face ao baseline histórico.
+    *   **Gaussiano (OLS)**: Modelação da variabilidade das vendas, gerando cenários de IC 95% (Pessimista/Realista/Otimista).
+    *   **Logístico**: Modelação da probabilidade de alta conversão de clientes mediante a aplicação de descontos.
 
 ---
 
 ## 💎 Dashboard (Streamlit)
 O sistema inclui uma interface de visualização interativa (Plotly) que oferece:
-*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências e IA.
+*   **Navegação por Separadores**: Previsão, Diagnóstico de Erros, Decomposição de Tendências, Inteligência de IA e **Modelos de Regras**.
 *   **Análise de Resíduos**: Visualização estatística para validar a honestidade dos modelos.
 *   **XAI (Explainable AI)**: Gráficos de importância de variáveis para explicar os drivers do negócio.
+*   **Regras Probabilísticas**: Visualização interativa com filtros das distribuições de clientes (Poisson), simulação de cenários de vendas (Gaussiano) e curvas de conversão por desconto (Logístico).
 *   **KPI Financeiro**: Estimativa de poupança financeira comparando a IA com o baseline.
+
 
 ---
 
 ## 🚀 Como Executar
 
 1.  **Motor de Cálculo**: `python main_pipeline.py` (Processa e gera todos os relatórios).
-2.  **Interface DSS**: `streamlit run dss_app/app.py` (Lança o dashboard interativo).
+2.  **Interface DSS**: `streamlit run app.py` (Lança o dashboard interativo).
+3.  **Teste dos Modelos Probabilísticos**: `python src/optimization/probabilistic_models.py` (Executa um self-test dos modelos de regras e imprime os resultados na consola).
+
+### Scripts de Otimização (executar da raiz do projeto)
+- `python scripts/run_individual_optimization.py` — Tarefa 1: Hill Climbing por loja
+- `python scripts/run_allocation_optimization.py` — Tarefa 2: Alocação conjunta com Hill Climbing
+- `python scripts/run_allocation_optimization_knapsack.py` — Tarefa 2 (Knapsack): Alocação via NSGA-II + Programação Dinâmica
+- `python scripts/run_optimization.py` — Tarefa 3: NSGA-II multi-objetivo (Lucro vs Staff)
+
 
 ---
 

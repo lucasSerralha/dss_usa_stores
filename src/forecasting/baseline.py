@@ -79,6 +79,6 @@ if __name__ == "__main__":
     INPUT_FILE = os.path.abspath(os.path.join(SCRIPT_DIR, "../../data/processed/features_stores_merged.csv"))
     
     # Apontar para a nossa pasta de resultados na raiz do projeto
-    RESULTS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../../results/forecasting"))
+    RESULTS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../../results/02_Forecasting/baseline"))
     
     run_baseline_model(INPUT_FILE, RESULTS_DIR)

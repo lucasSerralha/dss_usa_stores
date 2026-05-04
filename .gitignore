@@ -13,3 +13,5 @@ data/processed/*.csv
 comentários.txt
 .claude-code/
 CLAUDE.md
+.claude/
+._*
