@@ -82,7 +82,7 @@ def load_last_week(csv_path: str) -> tuple:
             )
 
         store_forecasts.append(sdf["Num_Customers"].astype(int).tolist())
-        store_weekends.append(sdf["is_weekend"].astype(bool).tolist())
+        store_weekends.append(sdf["IsWeekend"].astype(bool).tolist())
 
         if day_labels is None:
             day_labels  = [d.strftime("%a") for d in sdf["Date"]]
