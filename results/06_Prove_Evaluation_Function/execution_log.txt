@@ -1,0 +1,25 @@
+================================================================================
+PROVA DE CONCEITO: VALIDAÇÃO DA FUNÇÃO EVALUATION() - AMBIENTE ISOLADO
+================================================================================
+
+[DADOS DE TESTE - BALTIMORE]
+Clientes Previstos (Forecasting): [97, 61, 65, 71, 65, 89, 125]
+Fins de Semana (Calendário):      [True, False, False, False, False, False, True]
+
+[RESULTADOS DA SIMULAÇÃO]
+           Cenário  Lucro Estimado (€)  Staff Semanal  Penalização
+      Sub-alocação               -7385             14            0
+    Sobre-alocação              -31710            140        60000
+Otimizado (Manual)               32795             53            0
+
+--------------------------------------------------
+VALIDAÇÃO DAS REGRAS DE NEGÓCIO:
+✔ [EFICIÊNCIA] Provado: O excesso de staff (Cenário Sobre-alocação) reduz o lucro líquido.
+✔ [ELASTICIDADE] Provado: O desconto atrai volume suficiente para superar a sub-alocação.
+✔ [RESTRIÇÕES] Provado: A função detecta e penaliza violações de staff (€60,000).
+
+✔ GRÁFICO GERADO: results/06_Prove_Evaluation_Function/evaluation_concept_plot.png
+
+================================================================================
+PROVA CONCLUÍDA COM SUCESSO
+================================================================================
