@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.model_selection import TimeSeriesSplit
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from prophet import Prophet
@@ -22,6 +21,17 @@ def calculate_mape(y_true, y_pred):
     """
     y_true, y_pred = np.array(y_true), np.array(y_pred)
     return np.mean(np.abs((y_true - y_pred) / np.maximum(y_true, 1))) * 100
+
+def calculate_nmae(y_true, y_pred):
+    """
+    Calcula o Erro Médio Absoluto Normalizado (NMAE = MAE / mean(y_true) × 100).
+    Permite comparar erros entre lojas com escalas de vendas diferentes.
+    """
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    mean_actual = np.mean(y_true)
+    if mean_actual == 0:
+        return 0.0
+    return mean_absolute_error(y_true, y_pred) / mean_actual * 100
 
 def plot_forecast_results(store_name, y_test, results_dict, output_dir):
     """
@@ -94,7 +104,8 @@ def train_sarimax(train_df, test_df, features):
     metrics = {
         'MAE': mean_absolute_error(y_test, y_pred),
         'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
-        'MAPE': calculate_mape(y_test, y_pred)
+        'MAPE': calculate_mape(y_test, y_pred),
+        'NMAE': calculate_nmae(y_test, y_pred)
     }
     
     return metrics, y_pred.values
@@ -113,7 +124,7 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
     # Seleção de variáveis explicativas (Features) - EXCLUÍMOS 'Num_Employees' e 'Num_Customers' (Causalidade/Leakage)
     features_all = [
         'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 
-        'day_of_week', 'is_weekend', 'month', 'season_num',
+        'day_of_week', 'IsWeekend', 'month', 'season_num',
         'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
         'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
         'sales_roll_mean_7', 'sales_roll_std_7'
@@ -141,7 +152,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         'Model': 'Seasonal Naive',
         'MAE': mean_absolute_error(y_test, y_pred_naive),
         'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_naive)),
-        'MAPE': calculate_mape(y_test, y_pred_naive)
+        'MAPE': calculate_mape(y_test, y_pred_naive),
+        'NMAE': calculate_nmae(y_test, y_pred_naive)
     })
     plot_data['Seasonal Naive'] = y_pred_naive
 
@@ -153,7 +165,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         'Model': 'Linear Regression',
         'MAE': mean_absolute_error(y_test, y_pred_lr),
         'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_lr)),
-        'MAPE': calculate_mape(y_test, y_pred_lr)
+        'MAPE': calculate_mape(y_test, y_pred_lr),
+        'NMAE': calculate_nmae(y_test, y_pred_lr)
     })
     plot_data['Linear Regression'] = y_pred_lr
 
@@ -165,7 +178,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
         'Model': 'Random Forest',
         'MAE': mean_absolute_error(y_test, y_pred_rf),
         'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_rf)),
-        'MAPE': calculate_mape(y_test, y_pred_rf)
+        'MAPE': calculate_mape(y_test, y_pred_rf),
+        'NMAE': calculate_nmae(y_test, y_pred_rf)
     })
     plot_data['Random Forest'] = y_pred_rf
     
@@ -182,7 +196,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
             'Model': 'Holt-Winters',
             'MAE': mean_absolute_error(y_test, y_pred_hw_vals),
             'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_hw_vals)),
-            'MAPE': calculate_mape(y_test, y_pred_hw_vals)
+            'MAPE': calculate_mape(y_test, y_pred_hw_vals),
+            'NMAE': calculate_nmae(y_test, y_pred_hw_vals)
         })
         plot_data['Holt-Winters'] = y_pred_hw_vals
     except Exception as e:
@@ -200,7 +215,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
             'Model': 'Prophet',
             'MAE': mean_absolute_error(y_test, y_pred_prophet),
             'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_prophet)),
-            'MAPE': calculate_mape(y_test, y_pred_prophet)
+            'MAPE': calculate_mape(y_test, y_pred_prophet),
+            'NMAE': calculate_nmae(y_test, y_pred_prophet)
         })
         plot_data['Prophet'] = y_pred_prophet
 
@@ -251,7 +267,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
                     'Model': 'Ensemble (Top-3 Experts)',
                     'MAE': mean_absolute_error(y_test, y_pred_ensemble),
                     'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_ensemble)),
-                    'MAPE': calculate_mape(y_test, y_pred_ensemble)
+                    'MAPE': calculate_mape(y_test, y_pred_ensemble),
+                    'NMAE': calculate_nmae(y_test, y_pred_ensemble)
                 })
                 plot_data['Ensemble (Top-3 Experts)'] = y_pred_ensemble
                 logger.info(f"  [{store_name}] Ensemble criado com base em: {', '.join(top_names)}")
