@@ -1,0 +1,3 @@
+algorithm,n_pareto_solutions,o3_max_profit,o3_max_profit_staff,o3_min_staff,o3_min_staff_profit,o2_profit,o2_staff
+MOEA/D,96,17185.0,86,65,-20475.0,17185.0,86
+U-NSGA-III,64,37135.0,85,21,-67585.0,37135.0,85

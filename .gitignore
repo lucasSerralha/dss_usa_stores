@@ -13,5 +13,23 @@ data/processed/*.csv
 comentários.txt
 .claude-code/
 CLAUDE.md
-.claude/
 ._*
+
+# Runtime logs
+logs/*.log
+
+# Legacy / archive
+results/_archive/
+test_app.py
+
+# Large generated image sets not consumed by the DSS app
+results/02_Forecasting_Report/
+
+# Knapsack variant removed from app
+results/03_Optimization_Report/allocation_knapsack/
+
+# Diagnostic model subfolders (images/CSVs from probabilistic model tests)
+results/04_Model_Testing/Gaussiano/
+results/04_Model_Testing/Poisson/
+results/04_Model_Testing/moead/
+results/04_Model_Testing/unsga3/

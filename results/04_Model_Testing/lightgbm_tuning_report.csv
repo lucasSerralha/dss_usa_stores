@@ -1,0 +1,13 @@
+Loja,Cenario,Melhores_Parametros,RMSE,MAPE
+baltimore,A_Temporal_Base,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",5843.74,0.1867
+baltimore,B_Sales_Dynamics,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",7969.74,0.2743
+baltimore,C_Context_Expert,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",6601.8,0.2211
+lancaster,A_Temporal_Base,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",10563.27,0.2704
+lancaster,B_Sales_Dynamics,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",12686.68,0.3548
+lancaster,C_Context_Expert,"{'num_leaves': 31, 'max_depth': -1, 'learning_rate': 0.1, 'feature_fraction': 0.8}",12461.26,0.3493
+philadelphia,A_Temporal_Base,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",10664.97,0.1345
+philadelphia,B_Sales_Dynamics,"{'num_leaves': 50, 'max_depth': -1, 'learning_rate': 0.05, 'feature_fraction': 0.8}",11260.84,0.126
+philadelphia,C_Context_Expert,"{'num_leaves': 31, 'max_depth': -1, 'learning_rate': 0.1, 'feature_fraction': 0.8}",9372.66,0.11
+richmond,A_Temporal_Base,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",3720.2,0.1761
+richmond,B_Sales_Dynamics,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",3567.39,0.1727
+richmond,C_Context_Expert,"{'num_leaves': 50, 'max_depth': 5, 'learning_rate': 0.1, 'feature_fraction': 0.8}",3424.19,0.1609
