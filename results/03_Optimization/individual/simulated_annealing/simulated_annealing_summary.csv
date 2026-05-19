@@ -1,0 +1,5 @@
+store,algoritmo,lucro_maximo,total_staff,avg_discount,T_init,alpha,n_restarts,n_temp_steps,total_iters
+baltimore,Simulated Annealing,120890,132,23.86,5000.0,0.995,5,1701,425250
+lancaster,Simulated Annealing,172200,166,26.42,5000.0,0.995,5,1701,425250
+philadelphia,Simulated Annealing,263760,210,6.96,5000.0,0.995,5,1701,425250
+richmond,Simulated Annealing,104510,101,29.78,5000.0,0.995,5,1701,425250
