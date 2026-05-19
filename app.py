@@ -7,8 +7,6 @@ import pandas as pd
 sys.dont_write_bytecode = True
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import os
 import numpy as np
 
 # Configuração da página e estética (Tema Escuro/Executivo)
@@ -160,7 +158,7 @@ if df_history is not None:
     st.markdown("---")
 
     # --- ULTRA-TABS NAVIGATION ---
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Previsão de Vendas", "🔍 Diagnóstico Técnico", "🧬 Decomposição Temporal", "🧠 Inteligência de IA", "🎲 Modelos de Regras"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Previsão de Vendas", "🔍 Diagnóstico Técnico", "🧬 Decomposição Temporal", "🧠 Inteligência de IA", "🎲 Modelos de Regras", "🎯 Otimização"])
 
     # --- TAB 1: PREVISÃO (CLEAN & INTERACTIVE) ---
     with tab1:
@@ -228,6 +226,52 @@ if df_history is not None:
                 fig_scat.update_layout(margin=dict(t=80, b=20, l=10, r=10))
                 st.plotly_chart(fig_scat, use_container_width=True, theme="streamlit")
                 st.caption("Quanto mais próximos os pontos da linha diagonal, melhor é a fidelidade do modelo.")
+
+        if df_master is not None and not store_metrics.empty and 'NMAE' in df_master.columns:
+            st.markdown("---")
+            st.markdown("**📋 Comparação NMAE — Todos os Modelos**")
+            df_nmae = store_metrics[['Model', 'MAE', 'RMSE', 'MAPE', 'NMAE']].sort_values('NMAE').reset_index(drop=True)
+            df_fmt = df_nmae.copy()
+            df_fmt['MAE']  = df_fmt['MAE'].map('${:,.0f}'.format)
+            df_fmt['RMSE'] = df_fmt['RMSE'].map('${:,.0f}'.format)
+            df_fmt['MAPE'] = df_fmt['MAPE'].map('{:.2f}%'.format)
+            df_fmt['NMAE'] = df_fmt['NMAE'].map('{:.2f}%'.format)
+            st.dataframe(df_fmt, hide_index=True, use_container_width=True)
+            st.caption("NMAE = MAE ÷ Média das Vendas × 100. Métrica comparável entre lojas com volumes distintos — quanto menor, melhor.")
+
+        _path_bt       = os.path.join(script_dir, "results/05_Backtesting/backtesting_summary.csv")
+        _path_bt_folds = os.path.join(script_dir, "results/05_Backtesting/backtesting_results.csv")
+        if os.path.exists(_path_bt):
+            st.markdown("---")
+            st.markdown("**📈 Backtesting Walk-Forward — Validação Temporal (10 Folds)**")
+            df_bt = pd.read_csv(_path_bt)
+            df_bt_store = df_bt[df_bt['Store'].str.lower() == loja_sel.lower()]
+            if not df_bt_store.empty:
+                df_bt_fmt = df_bt_store[['Model', 'MAE', 'RMSE', 'MAPE', 'NMAE']].copy().reset_index(drop=True)
+                df_bt_fmt['MAE']  = df_bt_fmt['MAE'].map('${:,.0f}'.format)
+                df_bt_fmt['RMSE'] = df_bt_fmt['RMSE'].map('${:,.0f}'.format)
+                df_bt_fmt['MAPE'] = df_bt_fmt['MAPE'].map('{:.2f}%'.format)
+                df_bt_fmt['NMAE'] = df_bt_fmt['NMAE'].map('{:.2f}%'.format)
+                st.dataframe(df_bt_fmt, hide_index=True, use_container_width=True)
+            if os.path.exists(_path_bt_folds):
+                df_bt_d = pd.read_csv(_path_bt_folds)
+                df_bt_s = df_bt_d[df_bt_d['Store'].str.lower() == loja_sel.lower()]
+                if not df_bt_s.empty:
+                    df_folds = df_bt_s[['Fold', 'RF_NMAE', 'LR_NMAE', 'HW_NMAE']].rename(
+                        columns={'RF_NMAE': 'Random Forest', 'LR_NMAE': 'Linear Regression', 'HW_NMAE': 'Holt-Winters'}
+                    )
+                    df_m = df_folds.melt(id_vars='Fold', var_name='Modelo', value_name='NMAE')
+                    fig_bt = px.line(df_m, x='Fold', y='NMAE', color='Modelo', markers=True,
+                                    title=f"Estabilidade NMAE por Fold — {loja_sel.capitalize()}",
+                                    labels={'Fold': 'Fold', 'NMAE': 'NMAE (%)'},
+                                    color_discrete_map={
+                                        'Random Forest': '#E67E22',
+                                        'Linear Regression': '#4A90E2',
+                                        'Holt-Winters': '#2ECC71'
+                                    })
+                    fig_bt.update_layout(margin=dict(t=60, b=10, l=10, r=10))
+                    st.plotly_chart(fig_bt, use_container_width=True, theme="streamlit")
+                    st.caption("Walk-forward TimeSeriesSplit(n_splits=10). Folds tardios representam o desempenho real em produção.")
 
     # --- TAB 3: DECOMPOSIÇÃO (TREND/SEASONALITY) ---
     with tab3:
@@ -495,6 +539,266 @@ if df_history is not None:
         except Exception as e:
             st.error(f"Erro inesperado: {e}")
             st.exception(e)
+
+    # --- TAB 6: OTIMIZAÇÃO ---
+    with tab6:
+        st.subheader("🎯 Otimização de Operações — DSS")
+        st.markdown('<p style="font-style: italic; margin-top: -10px; margin-bottom: 10px; opacity: 0.8;">Seleção de algoritmos por objetivo, análise de convergência e otimização em tempo real.</p>', unsafe_allow_html=True)
+
+        _opt_dir = os.path.dirname(os.path.abspath(__file__))
+        _opt_src = os.path.abspath(os.path.join(_opt_dir, "src"))
+        if _opt_src not in sys.path:
+            sys.path.insert(0, _opt_src)
+
+        # ── A: Tabela de Seleção de Algoritmos ───────────────────────────────
+        st.markdown('<div class="sub-topic-box">⚙️ Seleção de Algoritmos por Objetivo</div>', unsafe_allow_html=True)
+        df_algos = pd.DataFrame({
+            "Objetivo": ["O1 — Lucro por Loja", "O2 — Alocação Conjunta (≤ 10 000 unid.)", "O3 — Multi-Loja: Lucro vs Staff"],
+            "Tipo": ["Mono-objetivo", "Mono-objetivo + Restrição", "Multi-objetivo"],
+            "Algoritmo Selecionado": ["Hill Climbing", "Hill Climbing + Penalização", "U-NSGA-III"],
+            "Justificação": [
+                "Convergência rápida, solução única clara — ideal para maximização simples por loja.",
+                "Penalização escalável com random restarts — eficaz no espaço de 84 variáveis com orçamento fixo.",
+                "Hipervolume superior e 64 soluções Pareto diversas: melhor trade-off Lucro↑ Staff↓ face ao MOEA/D.",
+            ]
+        })
+        st.dataframe(df_algos, hide_index=True, use_container_width=True)
+
+        st.markdown("---")
+
+        # ── B: O1 Bar + O3 Pareto (2 colunas) ───────────────────────────────
+        col_o1, col_o3 = st.columns(2)
+
+        with col_o1:
+            st.markdown('<div class="sub-topic-box">📊 O1 — Lucro Máximo por Loja (Hill Climbing)</div>', unsafe_allow_html=True)
+            _path_o1 = os.path.join(_opt_dir, "results/03_Optimization/individual/optimization_summary.csv")
+            if os.path.exists(_path_o1):
+                df_o1 = pd.read_csv(_path_o1)
+                fig_o1 = px.bar(
+                    df_o1, x='store', y='lucro_maximo',
+                    text=df_o1['lucro_maximo'].map('${:,.0f}'.format),
+                    labels={'store': 'Loja', 'lucro_maximo': 'Lucro Máximo ($)'},
+                    color='lucro_maximo', color_continuous_scale='Greens',
+                    title="Lucro Semanal Ótimo por Loja"
+                )
+                fig_o1.update_traces(textposition='outside')
+                fig_o1.update_layout(margin=dict(t=60, b=10, l=10, r=10),
+                                     showlegend=False, coloraxis_showscale=False)
+                st.plotly_chart(fig_o1, use_container_width=True, theme="streamlit")
+            else:
+                st.info("Corre `python scripts/run_individual_optimization.py` para gerar resultados O1.")
+
+        with col_o3:
+            st.markdown('<div class="sub-topic-box">🧬 O3 — Fronteira de Pareto: MOEA/D vs U-NSGA-III</div>', unsafe_allow_html=True)
+            _path_md   = os.path.join(_opt_dir, "results/03_Optimization/joint_o3/joint_pareto_moead.csv")
+            _path_u3   = os.path.join(_opt_dir, "results/03_Optimization/joint_o3/joint_pareto_unsga3.csv")
+            _path_summ = os.path.join(_opt_dir, "results/03_Optimization/joint_o3/joint_o3_summary.csv")
+
+            if os.path.exists(_path_md) and os.path.exists(_path_u3):
+                df_md_p = pd.read_csv(_path_md)[['lucro_total', 'staff_total']].drop_duplicates()
+                df_u3_p = pd.read_csv(_path_u3)[['lucro_total', 'staff_total']].drop_duplicates()
+
+                fig_par = go.Figure()
+                fig_par.add_trace(go.Scatter(
+                    x=df_md_p['staff_total'], y=df_md_p['lucro_total'],
+                    mode='markers', name='MOEA/D',
+                    marker=dict(color='#E67E22', size=7, opacity=0.85)
+                ))
+                fig_par.add_trace(go.Scatter(
+                    x=df_u3_p['staff_total'], y=df_u3_p['lucro_total'],
+                    mode='markers', name='U-NSGA-III',
+                    marker=dict(color='#4A90E2', size=7, opacity=0.85)
+                ))
+                fig_par.update_layout(
+                    title="Fronteira de Pareto: Lucro Total vs Staff Total",
+                    xaxis_title="Staff Total (4 lojas)", yaxis_title="Lucro Total ($)",
+                    margin=dict(t=60, b=10, l=10, r=10), hovermode="closest",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig_par, use_container_width=True, theme="streamlit")
+
+                if os.path.exists(_path_summ):
+                    df_s = pd.read_csv(_path_summ)
+                    row_md = df_s[df_s['algorithm'] == 'MOEA/D'].iloc[0]
+                    row_u3 = df_s[df_s['algorithm'] == 'U-NSGA-III'].iloc[0]
+                    st.caption(
+                        f"**MOEA/D**: {int(row_md['n_pareto_solutions'])} soluções | "
+                        f"Lucro máx: ${row_md['o3_max_profit']:,.0f}   ·   "
+                        f"**U-NSGA-III**: {int(row_u3['n_pareto_solutions'])} soluções | "
+                        f"Lucro máx: ${row_u3['o3_max_profit']:,.0f}"
+                    )
+            else:
+                st.info("Corre `python scripts/run_joint_optimization_o3.py` para gerar as fronteiras de Pareto.")
+
+        st.markdown("---")
+
+        # ── O2: Alocação Conjunta (≤ 10 000 unidades) ────────────────────────
+        st.markdown('<div class="sub-topic-box">📦 O2 — Alocação Conjunta (≤ 10 000 unidades)</div>', unsafe_allow_html=True)
+        _path_o2_hc = os.path.join(_opt_dir, "results/03_Optimization/allocation/allocation_summary.csv")
+        _path_o2_ks = os.path.join(_opt_dir, "results/03_Optimization/allocation_knapsack/allocation_summary_knapsack.csv")
+        _df_o2_hc = pd.read_csv(_path_o2_hc) if os.path.exists(_path_o2_hc) else None
+        _df_o2_ks = pd.read_csv(_path_o2_ks) if os.path.exists(_path_o2_ks) else None
+
+        if _df_o2_hc is not None or _df_o2_ks is not None:
+            col_o2a, col_o2b = st.columns(2)
+            with col_o2a:
+                if _df_o2_hc is not None:
+                    _stores_hc = _df_o2_hc[_df_o2_hc['store'] != 'TOTAL']
+                    _total_hc  = float(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['lucro'].values[0])
+                    _units_hc  = int(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['unidades'].values[0])
+                    _staff_hc  = int(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['total_staff'].values[0])
+                    fig_o2hc = px.bar(
+                        _stores_hc, x='store', y='lucro',
+                        text=_stores_hc['lucro'].map('${:,.0f}'.format),
+                        title=f"Hill Climbing — Total: ${_total_hc:,.0f}",
+                        labels={'store': 'Loja', 'lucro': 'Lucro ($)'},
+                        color='lucro', color_continuous_scale='RdYlGn',
+                    )
+                    fig_o2hc.update_traces(textposition='outside')
+                    fig_o2hc.update_layout(margin=dict(t=60, b=10, l=10, r=10),
+                                           showlegend=False, coloraxis_showscale=False)
+                    st.plotly_chart(fig_o2hc, use_container_width=True, theme="streamlit")
+                    st.caption(f"Unidades: {_units_hc:,} / 10 000  |  Staff total: {_staff_hc}")
+            with col_o2b:
+                if _df_o2_ks is not None:
+                    _stores_ks = _df_o2_ks[_df_o2_ks['store'] != 'TOTAL']
+                    _total_ks  = float(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['lucro'].values[0])
+                    _units_ks  = int(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['unidades'].values[0])
+                    _staff_ks  = int(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['total_staff'].values[0])
+                    fig_o2ks = px.bar(
+                        _stores_ks, x='store', y='lucro',
+                        text=_stores_ks['lucro'].map('${:,.0f}'.format),
+                        title=f"Knapsack (NSGA-II + DP) — Total: ${_total_ks:,.0f}",
+                        labels={'store': 'Loja', 'lucro': 'Lucro ($)'},
+                        color='lucro', color_continuous_scale='RdYlGn',
+                    )
+                    fig_o2ks.update_traces(textposition='outside')
+                    fig_o2ks.update_layout(margin=dict(t=60, b=10, l=10, r=10),
+                                           showlegend=False, coloraxis_showscale=False)
+                    st.plotly_chart(fig_o2ks, use_container_width=True, theme="streamlit")
+                    st.caption(f"Unidades: {_units_ks:,} / 10 000  |  Staff total: {_staff_ks}")
+            if _df_o2_hc is not None and _df_o2_ks is not None:
+                _winner = "Knapsack" if _total_ks > _total_hc else "Hill Climbing"
+                _diff   = abs(_total_ks - _total_hc)
+                st.info(f"**Vencedor O2:** {_winner} com +${_diff:,.0f} de lucro adicional mantendo ≤ 10 000 unidades.")
+        else:
+            st.info("Corre `python scripts/run_allocation_optimization.py` para gerar resultados O2.")
+
+        st.markdown("---")
+
+        # ── C: Sensibilidade N_MAX_GEN (se o CSV existir) ────────────────────
+        _path_nmg = os.path.join(_opt_dir, "results/04_Model_Testing/nmaxgen_comparison.csv")
+        if os.path.exists(_path_nmg):
+            st.markdown('<div class="sub-topic-box">📈 Sensibilidade N_MAX_GEN — Hipervolume vs Gerações</div>', unsafe_allow_html=True)
+            df_nmg = pd.read_csv(_path_nmg)
+            fig_nmg = px.line(
+                df_nmg, x='n_max_gen', y='hv_mean', color='algorithm',
+                error_y='hv_std',
+                labels={'n_max_gen': 'N_MAX_GEN (gerações)', 'hv_mean': 'Hipervolume (média)', 'algorithm': 'Algoritmo'},
+                title="Convergência: Hipervolume vs Número de Gerações",
+                color_discrete_map={'MOEA/D': '#E67E22', 'U-NSGA-III': '#4A90E2'},
+                markers=True
+            )
+            fig_nmg.add_vline(x=150, line_dash="dot", line_color="grey",
+                              annotation_text="N=150 escolhido", annotation_position="top right")
+            fig_nmg.update_layout(margin=dict(t=60, b=10, l=10, r=10))
+            st.plotly_chart(fig_nmg, use_container_width=True, theme="streamlit")
+            st.caption("Justificação da escolha N_MAX_GEN=150: equilíbrio entre qualidade da fronteira de Pareto e tempo de execução.")
+        else:
+            st.info("⚙️ Para gerar a análise de sensibilidade N_MAX_GEN, corre: `python scripts/compare_optimization_nmaxgen.py`")
+
+        st.markdown("---")
+
+        # ── D: O1 Plano Ótimo + Simulação em Tempo Real ──────────────────────
+        st.markdown('<div class="sub-topic-box">⚡ O1 — Plano Semanal Ótimo por Loja</div>', unsafe_allow_html=True)
+
+        _path_plan = os.path.join(_opt_dir, f"results/03_Optimization/individual/{loja_sel}_best_plan.csv")
+        if os.path.exists(_path_plan):
+            df_plan = pd.read_csv(_path_plan)
+            df_plan_disp = pd.DataFrame({
+                'Dia':       df_plan['day_label'],
+                'FDS':       df_plan['is_weekend'].map(lambda x: '✓' if x else ''),
+                'Clientes':  df_plan['customers'],
+                'Desconto':  df_plan['pr'].map(lambda x: f"{x * 100:.1f}%"),
+                'Experts':   df_plan['hr_x'].astype(int),
+                'Júniors':   df_plan['hr_j'].astype(int),
+                'Staff/Dia': df_plan['total_staff'].astype(int),
+            })
+            st.dataframe(df_plan_disp, hide_index=True, use_container_width=True)
+            if os.path.exists(_path_o1):
+                _df_summ = pd.read_csv(_path_o1)
+                _row = _df_summ[_df_summ['store'].str.lower() == loja_sel.lower()]
+                if not _row.empty:
+                    st.caption(
+                        f"Lucro semanal ótimo: **${_row['lucro_maximo'].values[0]:,.0f}**  |  "
+                        f"Staff total: {int(_row['total_staff'].values[0])}  |  "
+                        f"Hill Climbing — 10 restarts × 2 000 iterações"
+                    )
+
+        st.markdown("**Simular com novos dados de clientes:**")
+
+        _defaults_cli = {
+            "baltimore":    [97, 61, 65, 71, 65, 89, 125],
+            "lancaster":    [116, 72, 77, 84, 77, 106, 149],
+            "philadelphia": [230, 144, 154, 168, 154, 211, 298],
+            "richmond":     [64, 40, 42, 46, 42, 58, 82],
+        }
+        _dias_rt    = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+        _fds_rt     = [True, False, False, False, False, False, True]
+        _def_cli    = _defaults_cli.get(loja_sel, [80] * 7)
+
+        cols_rt = st.columns(7)
+        cli_rt  = []
+        for _i, (_col, _dia) in enumerate(zip(cols_rt, _dias_rt)):
+            with _col:
+                cli_rt.append(st.number_input(
+                    _dia, min_value=10, max_value=600,
+                    value=int(_def_cli[_i]), step=5,
+                    key=f"rt_cli_{loja_sel}_{_i}"
+                ))
+
+        if st.button("🚀 Otimizar Agora", type="primary", key="btn_rt_opt"):
+            try:
+                from optimization.hill_climbing import hill_climbing as _hc_fn
+                with st.spinner(f"Hill Climbing a correr para {loja_sel_raw}..."):
+                    _sol, _score, _hist = _hc_fn(
+                        store=loja_sel,
+                        forecast_customers=cli_rt,
+                        forecast_is_weekend=_fds_rt,
+                        iterations=500
+                    )
+                _best_profit = -_score
+
+                st.success(f"✅ Lucro Semanal Ótimo: **${_best_profit:,.0f}**")
+
+                _plan = []
+                _staff_total_rt = 0
+                for _i in range(7):
+                    _pr   = max(0.0, min(0.30, _sol[_i * 3]))
+                    _hrx  = max(0, int(round(_sol[_i * 3 + 1])))
+                    _hrj  = max(0, int(round(_sol[_i * 3 + 2])))
+                    _staff_total_rt += _hrx + _hrj
+                    _plan.append({
+                        "Dia":          _dias_rt[_i],
+                        "FDS":          "✓" if _fds_rt[_i] else "",
+                        "Clientes":     cli_rt[_i],
+                        "Desconto":     f"{_pr * 100:.1f}%",
+                        "Experts":      _hrx,
+                        "Júniors":      _hrj,
+                        "Staff/Dia":    _hrx + _hrj,
+                    })
+
+                st.dataframe(pd.DataFrame(_plan), hide_index=True, use_container_width=True)
+                _avg_desc = sum(max(0.0, min(0.30, _sol[i * 3])) for i in range(7)) / 7
+                st.caption(
+                    f"Staff total semanal: **{_staff_total_rt}** funcionários  |  "
+                    f"Desconto médio: **{_avg_desc * 100:.1f}%**"
+                )
+            except ImportError as _ie:
+                st.error(f"Erro de importação: {_ie}")
+            except Exception as _ex:
+                st.error(f"Erro durante a otimização: {_ex}")
+                st.exception(_ex)
 
 else:
     st.error("⚠️ Erro Crítico: Dados não encontrados.")
