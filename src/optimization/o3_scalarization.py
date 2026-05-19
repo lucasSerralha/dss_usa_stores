@@ -3,9 +3,9 @@ import pandas as pd
 import os
 import sys
 
-# =====================================================
-# CONFIGURAÇÃO DO PROJETO
-# =====================================================
+
+#CONFIGURAÇÃO DO PROJETO
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
@@ -15,9 +15,9 @@ sys.path.append(os.path.join(PROJECT_ROOT, "src"))
 from utils.profit_logic import optimize_weekly_wrapper
 
 
-# =====================================================
-# CARREGAR PREVISÃO REAL
-# =====================================================
+
+#CARREGAR PREVISÃO REAL
+
 
 def load_real_forecast(store="baltimore"):
 
@@ -43,9 +43,9 @@ def load_real_forecast(store="baltimore"):
     return customers, weekend
 
 
-# =====================================================
-# O3 SCALARIZATION (VERSÃO CORRIGIDA)
-# =====================================================
+
+#SCALARIZATION
+
 
 def o3_scalarization(solution, store="baltimore", debug=False):
 
@@ -63,9 +63,9 @@ def o3_scalarization(solution, store="baltimore", debug=False):
     profit = -f1
     staff = f2
 
-    # =====================================================
+
     # O3 CORRETO (SEM BASELINE ARTIFICIAL)
-    # =====================================================
+
 
     staff_safe = max(staff, 1)
 
@@ -75,9 +75,9 @@ def o3_scalarization(solution, store="baltimore", debug=False):
     # escalarização pedida (w = 0.7)
     score = 0.7 * o3
 
-    # =====================================================
-    # OUTPUT LIMPO E CLARO
-    # =====================================================
+   
+    #OUTPUT
+    
 
     if debug:
 
@@ -104,13 +104,13 @@ def o3_scalarization(solution, store="baltimore", debug=False):
     return score
 
 
-# =====================================================
-# TESTE LOCAL
-# =====================================================
+
+#TESTE LOCAL
+
 
 if __name__ == "__main__":
 
-    print("A executar O3 (versão final corrigida)")
+    print("A executar O3 (versão final)")
 
     solution = np.random.rand(21)
 
