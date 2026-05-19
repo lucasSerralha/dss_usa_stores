@@ -83,7 +83,7 @@ print("\n==============================")
 print("RESULTADOS")
 print("==============================")
 
-print(f"\nErro médio absoluto do lucro (MAE): {mae_profit:.2f}")
+print(f"\nErro médio absoluto do lucro: {mae_profit:.2f}")
 
 
 #GRÁFICO
