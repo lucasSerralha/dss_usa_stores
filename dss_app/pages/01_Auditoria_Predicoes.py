@@ -93,7 +93,7 @@ _root_dir = os.path.abspath(os.path.join(_page_dir, "..", ".."))
 # ── Data loading ───────────────────────────────────────────────────────────────
 @st.cache_data
 def load_master_report(root: str):
-    path = os.path.join(root, "results", "00_Master_Summary", "fidelity_experimentation_report.csv")
+    path = os.path.join(root, "results_v2", "00_Master_Summary", "fidelity_experimentation_report.csv")
     if not os.path.exists(path):
         return None
     return pd.read_csv(path)
@@ -105,7 +105,7 @@ def load_lightgbm_report(root: str):
     O relatório LightGBM tem MAPE em formato decimal (0.18 = 18%).
     Normaliza para percentagem para ser consistente com o relatório master.
     """
-    path = os.path.join(root, "results", "04_Model_Testing", "lightgbm_tuning_report.csv")
+    path = os.path.join(root, "results_v2", "04_Model_Testing", "lightgbm_tuning_report.csv")
     if not os.path.exists(path):
         return None
     df = pd.read_csv(path)

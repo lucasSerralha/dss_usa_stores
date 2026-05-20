@@ -1,0 +1,28 @@
+00:16:46 [INFO] === A iniciar otimizacao conjunta com Death Penalty (4 lojas, 84 vars) ===
+00:16:52 [INFO]   Restart  1/20 | Lucro: EUR 813 | Units: 9941 (OK) | Rejeitados: 323
+00:16:58 [INFO]   Restart  2/20 | Lucro: EUR 770 | Units: 9989 (OK) | Rejeitados: 323
+00:17:03 [INFO]   Restart  3/20 | Lucro: EUR 936 | Units: 9980 (OK) | Rejeitados: 306
+00:17:09 [INFO]   Restart  4/20 | Lucro: EUR 864 | Units: 9992 (OK) | Rejeitados: 350
+00:17:14 [INFO]   Restart  5/20 | Lucro: EUR 864 | Units: 9985 (OK) | Rejeitados: 334
+00:17:19 [INFO]   Restart  6/20 | Lucro: EUR 919 | Units: 9967 (OK) | Rejeitados: 306
+00:17:25 [INFO]   Restart  7/20 | Lucro: EUR 799 | Units: 9972 (OK) | Rejeitados: 327
+00:17:30 [INFO]   Restart  8/20 | Lucro: EUR 881 | Units: 9992 (OK) | Rejeitados: 337
+00:17:35 [INFO]   Restart  9/20 | Lucro: EUR 682 | Units: 9989 (OK) | Rejeitados: 333
+00:17:40 [INFO]   Restart 10/20 | Lucro: EUR 897 | Units: 9990 (OK) | Rejeitados: 336
+00:17:45 [INFO]   Restart 11/20 | Lucro: EUR 877 | Units: 9995 (OK) | Rejeitados: 373
+00:17:50 [INFO]   Restart 12/20 | Lucro: EUR 716 | Units: 9976 (OK) | Rejeitados: 321
+00:17:55 [INFO]   Restart 13/20 | Lucro: EUR 834 | Units: 10000 (OK) | Rejeitados: 324
+00:18:00 [INFO]   Restart 14/20 | Lucro: EUR 868 | Units: 9923 (OK) | Rejeitados: 299
+00:18:05 [INFO]   Restart 15/20 | Lucro: EUR 937 | Units: 9990 (OK) | Rejeitados: 321
+00:18:10 [INFO]   Restart 16/20 | Lucro: EUR 728 | Units: 9994 (OK) | Rejeitados: 292
+00:18:16 [INFO]   Restart 17/20 | Lucro: EUR 831 | Units: 9991 (OK) | Rejeitados: 349
+00:18:21 [INFO]   Restart 18/20 | Lucro: EUR 764 | Units: 9995 (OK) | Rejeitados: 315
+00:18:26 [INFO]   Restart 19/20 | Lucro: EUR 792 | Units: 9943 (OK) | Rejeitados: 311
+00:18:31 [INFO]   Restart 20/20 | Lucro: EUR 891 | Units: 9997 (OK) | Rejeitados: 349
+00:18:31 [INFO] Death Penalty Stats: 6529/80000 vizinhos rejeitados (8.2%)
+00:18:32 [INFO] Grafico de plano -> results_v2/03_Optimization/allocation_death_penalty\baltimore_plan.png
+00:18:33 [INFO] Grafico de plano -> results_v2/03_Optimization/allocation_death_penalty\lancaster_plan.png
+00:18:34 [INFO] Grafico de plano -> results_v2/03_Optimization/allocation_death_penalty\philadelphia_plan.png
+00:18:35 [INFO] Grafico de plano -> results_v2/03_Optimization/allocation_death_penalty\richmond_plan.png
+00:18:36 [INFO] Grafico de convergencia -> results_v2/03_Optimization/allocation_death_penalty\convergence.png
+00:18:36 [INFO] Grafico de alocacao -> results_v2/03_Optimization/allocation_death_penalty\allocation_summary.png

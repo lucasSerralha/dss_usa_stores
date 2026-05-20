@@ -1,0 +1,22 @@
+00:16:46 [INFO] === A iniciar otimizacao conjunta (4 lojas, 84 variaveis) ===
+00:16:54 [INFO]   Restart  1/15 | Lucro: EUR 864 | Units: 9999 (OK)
+00:17:00 [INFO]   Restart  2/15 | Lucro: EUR 751 | Units: 9999 (OK)
+00:17:07 [INFO]   Restart  3/15 | Lucro: EUR 928 | Units: 9986 (OK)
+00:17:14 [INFO]   Restart  4/15 | Lucro: EUR 979 | Units: 9964 (OK)
+00:17:20 [INFO]   Restart  5/15 | Lucro: EUR 695 | Units: 9997 (OK)
+00:17:27 [INFO]   Restart  6/15 | Lucro: EUR 906 | Units: 9923 (OK)
+00:17:34 [INFO]   Restart  7/15 | Lucro: EUR 598 | Units: 9987 (OK)
+00:17:40 [INFO]   Restart  8/15 | Lucro: EUR 720 | Units: 9992 (OK)
+00:17:47 [INFO]   Restart  9/15 | Lucro: EUR 790 | Units: 10000 (OK)
+00:17:53 [INFO]   Restart 10/15 | Lucro: EUR 774 | Units: 9997 (OK)
+00:17:59 [INFO]   Restart 11/15 | Lucro: EUR 931 | Units: 9993 (OK)
+00:18:06 [INFO]   Restart 12/15 | Lucro: EUR 858 | Units: 9995 (OK)
+00:18:13 [INFO]   Restart 13/15 | Lucro: EUR 815 | Units: 9992 (OK)
+00:18:20 [INFO]   Restart 14/15 | Lucro: EUR 989 | Units: 9965 (OK)
+00:18:26 [INFO]   Restart 15/15 | Lucro: EUR 838 | Units: 9997 (OK)
+00:18:27 [INFO] Grafico de plano guardado -> results_v2/03_Optimization/allocation\baltimore_plan.png
+00:18:28 [INFO] Grafico de plano guardado -> results_v2/03_Optimization/allocation\lancaster_plan.png
+00:18:29 [INFO] Grafico de plano guardado -> results_v2/03_Optimization/allocation\philadelphia_plan.png
+00:18:30 [INFO] Grafico de plano guardado -> results_v2/03_Optimization/allocation\richmond_plan.png
+00:18:30 [INFO] Grafico de convergencia guardado -> results_v2/03_Optimization/allocation\convergence.png
+00:18:31 [INFO] Grafico de alocacao guardado -> results_v2/03_Optimization/allocation\allocation_summary.png

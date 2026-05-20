@@ -138,7 +138,7 @@ st.markdown("""
 _page_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.abspath(os.path.join(_page_dir, "..", ".."))
 _src_dir  = os.path.join(_root_dir, "src")
-_opt_dir  = os.path.join(_root_dir, "results", "03_Optimization_Report")
+_opt_dir  = os.path.join(_root_dir, "results_v2", "03_Optimization")
 
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
@@ -178,7 +178,7 @@ def load_joint_summary(opt_dir: str):
 
 @st.cache_data
 def load_store_pareto(opt_dir: str, store: str):
-    path = os.path.join(opt_dir, "multiobjective", f"{store.lower()}_pareto.csv")
+    path = os.path.join(opt_dir, "multiobjective", store.capitalize(), "pareto_front.csv")
     return pd.read_csv(path) if os.path.exists(path) else None
 
 

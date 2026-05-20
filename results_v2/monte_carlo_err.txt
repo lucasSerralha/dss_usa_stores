@@ -1,0 +1,16 @@
+00:16:46 [INFO] === A otimizar: BALTIMORE ===
+00:16:51 [INFO] Grafico de convergencia guardado -> results_v2\03_Optimization\individual\monte_carlo\baltimore_mc_convergence.png
+00:16:52 [INFO] Histograma de distribuicao guardado -> results_v2\03_Optimization\individual\monte_carlo\baltimore_mc_distribution.png
+00:16:53 [INFO] Grafico do plano otimo guardado -> results_v2\03_Optimization\individual\monte_carlo\baltimore_mc_best_plan.png
+00:16:53 [INFO] === A otimizar: LANCASTER ===
+00:16:58 [INFO] Grafico de convergencia guardado -> results_v2\03_Optimization\individual\monte_carlo\lancaster_mc_convergence.png
+00:16:59 [INFO] Histograma de distribuicao guardado -> results_v2\03_Optimization\individual\monte_carlo\lancaster_mc_distribution.png
+00:17:00 [INFO] Grafico do plano otimo guardado -> results_v2\03_Optimization\individual\monte_carlo\lancaster_mc_best_plan.png
+00:17:00 [INFO] === A otimizar: PHILADELPHIA ===
+00:17:05 [INFO] Grafico de convergencia guardado -> results_v2\03_Optimization\individual\monte_carlo\philadelphia_mc_convergence.png
+00:17:06 [INFO] Histograma de distribuicao guardado -> results_v2\03_Optimization\individual\monte_carlo\philadelphia_mc_distribution.png
+00:17:06 [INFO] Grafico do plano otimo guardado -> results_v2\03_Optimization\individual\monte_carlo\philadelphia_mc_best_plan.png
+00:17:06 [INFO] === A otimizar: RICHMOND ===
+00:17:11 [INFO] Grafico de convergencia guardado -> results_v2\03_Optimization\individual\monte_carlo\richmond_mc_convergence.png
+00:17:12 [INFO] Histograma de distribuicao guardado -> results_v2\03_Optimization\individual\monte_carlo\richmond_mc_distribution.png
+00:17:13 [INFO] Grafico do plano otimo guardado -> results_v2\03_Optimization\individual\monte_carlo\richmond_mc_best_plan.png

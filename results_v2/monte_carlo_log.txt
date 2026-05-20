@@ -1,0 +1,83 @@
+
+=================================================================
+  O1 — Otimizacao Individual por Loja (MONTE CARLO)
+  Amostras: 20,000 | Seed: 42
+=================================================================
+
+
+------------------------------------------------------------
+  BALTIMORE — Lucro Maximo: $1,485.00
+  Lucro Medio: $-519.53  |  Std: $757.55
+  Staff Total Semanal: 86  |  Desconto Medio: 15.3%
+
+  Plano Semanal Otimo (Monte Carlo):
+  Dia    Desconto  Peritos  Juniores  Total  Clientes   FdS
+  --------------------------------------------------------
+  Dom        7.3%       14         0     14        97   Sim
+  Seg       24.7%        4         5      9        61   Nao
+  Ter       19.9%        4         9     13        65   Nao
+  Qua       20.0%        3         7     10        71   Nao
+  Qui       20.4%        1         7      8        65   Nao
+  Sex       10.5%        7         8     15        89   Nao
+  Sab        4.2%        5        12     17       125   Sim
+
+------------------------------------------------------------
+  LANCASTER — Lucro Maximo: $2,596.00
+  Lucro Medio: $700.69  |  Std: $632.72
+  Staff Total Semanal: 101  |  Desconto Medio: 11.3%
+
+  Plano Semanal Otimo (Monte Carlo):
+  Dia    Desconto  Peritos  Juniores  Total  Clientes   FdS
+  --------------------------------------------------------
+  Dom       25.7%       15         2     17       116   Sim
+  Seg        5.1%       10         3     13        72   Nao
+  Ter       15.6%        4         6     10        77   Nao
+  Qua       15.6%       12         1     13        84   Nao
+  Qui        3.7%        0        12     12        77   Nao
+  Sex        1.6%        7        10     17       106   Nao
+  Sab       11.6%       10         9     19       149   Sim
+
+------------------------------------------------------------
+  PHILADELPHIA — Lucro Maximo: $4,691.00
+  Lucro Medio: $2,774.59  |  Std: $570.35
+  Staff Total Semanal: 165  |  Desconto Medio: 12.6%
+
+  Plano Semanal Otimo (Monte Carlo):
+  Dia    Desconto  Peritos  Juniores  Total  Clientes   FdS
+  --------------------------------------------------------
+  Dom        2.9%       15         5     20       230   Sim
+  Seg        9.2%       11        11     22       144   Nao
+  Ter       10.4%       11        15     26       154   Nao
+  Qua       14.9%       12        13     25       168   Nao
+  Qui        8.2%       14        13     27       154   Nao
+  Sex       19.7%       10        15     25       211   Nao
+  Sab       22.5%       14         6     20       298   Sim
+
+------------------------------------------------------------
+  RICHMOND — Lucro Maximo: $961.00
+  Lucro Medio: $-2,249.42  |  Std: $1,028.52
+  Staff Total Semanal: 50  |  Desconto Medio: 21.5%
+
+  Plano Semanal Otimo (Monte Carlo):
+  Dia    Desconto  Peritos  Juniores  Total  Clientes   FdS
+  --------------------------------------------------------
+  Dom       19.8%        2         7      9        64   Sim
+  Seg       25.7%        4         3      7        40   Nao
+  Ter       15.4%        3         3      6        42   Nao
+  Qua       29.9%        0         3      3        46   Nao
+  Qui       22.1%        3         3      6        42   Nao
+  Sex       10.4%        1         5      6        58   Nao
+  Sab       27.5%        5         8     13        82   Sim
+
+=================================================================
+  RESUMO — O1: MONTE CARLO
+=================================================================
+       store  lucro_maximo  lucro_medio  lucro_std  avg_discount
+   baltimore          1485      -519.53     757.55         15.29
+   lancaster          2596       700.69     632.72         11.28
+philadelphia          4691      2774.59     570.35         12.56
+    richmond           961     -2249.42    1028.52         21.55
+
+  Resultados guardados em: C:\Users\silva\Desktop\Universidade\ASID\dss_usa_stores\results_v2\03_Optimization\individual\monte_carlo
+=================================================================
+

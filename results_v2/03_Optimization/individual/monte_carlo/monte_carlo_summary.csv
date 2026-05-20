@@ -1,0 +1,5 @@
+store,algoritmo,lucro_maximo,lucro_medio,lucro_std,total_staff,avg_discount,n_samples
+baltimore,Monte Carlo,1485,-519.53,757.55,86,15.29,20000
+lancaster,Monte Carlo,2596,700.69,632.72,101,11.28,20000
+philadelphia,Monte Carlo,4691,2774.59,570.35,165,12.56,20000
+richmond,Monte Carlo,961,-2249.42,1028.52,50,21.55,20000
