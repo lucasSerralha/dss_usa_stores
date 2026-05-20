@@ -1,0 +1,13 @@
+Store,Model,MAE,RMSE,MAPE,NMAE
+Baltimore,Random Forest,31.2813,50.5863,23.0269,21.6845
+Baltimore,Linear Regression,38.03,54.1491,30.9608,27.4327
+Baltimore,Holt-Winters,64.7488,97.9965,46.3715,47.1985
+Lancaster,Random Forest,50.2174,79.0907,26.0925,23.6397
+Lancaster,Linear Regression,60.7763,84.3513,34.6762,30.3092
+Lancaster,Holt-Winters,98.9435,147.5605,48.7681,49.2533
+Philadelphia,Random Forest,52.6894,89.2457,20.0409,19.7702
+Philadelphia,Linear Regression,67.089,101.296,27.9843,26.0093
+Philadelphia,Holt-Winters,116.3274,179.4856,43.8346,44.777
+Richmond,Random Forest,17.1859,28.9941,20.5195,20.1405
+Richmond,Linear Regression,22.1805,32.6448,29.956,27.0912
+Richmond,Holt-Winters,37.4828,57.7321,44.6378,45.9927

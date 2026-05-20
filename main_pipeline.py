@@ -50,7 +50,7 @@ def main():
     print("="*60)
     
     # 0. CONFIGURAÇÃO DA ESTRUTURA DE DIRETÓRIOS (Arquitetura de Resultados)
-    results_base = 'results'
+    results_base = 'results_v2'  # v2: target correto = Num_Customers (enunciado)
     subdirs = ['00_Master_Summary', '01_EDA', '02_Forecasting']
     for sd in subdirs:
         os.makedirs(os.path.join(results_base, sd), exist_ok=True)
@@ -68,12 +68,27 @@ def main():
         logger.error("Nenhum ficheiro processado foi encontrado. Interrompendo pipeline.")
         return
 
-    # Definição dos conjuntos de variáveis (Apostas Técnicas do António e do Professor)
-    # NOTA: 'Num_Employees' está banido de todas as experiências por questões de causalidade.
+    # Definição dos conjuntos de variáveis — TARGET = Num_Customers (v2)
+    # NOTA: 'Num_Employees' banido por causalidade.
+    #        'Num_Customers' é agora o TARGET — usar apenas lags (sem leakage circular).
     feature_sets = {
-        "A_Temporal_Base": ['day_of_week', 'IsWeekend', 'month', 'season_num', 'sales_lag_7', 'sales_lag_28'],
-        "B_Sales_Dynamics": ['day_of_week', 'month', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7', 'sales_roll_std_7'],
-        "C_Context_Expert": ['Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday', 'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7', 'sales_roll_mean_7']
+        # Cenário A: apenas sinais temporais + lags de clientes
+        "A_Temporal_Base": [
+            'day_of_week', 'IsWeekend', 'month', 'season_num',
+            'customers_lag_7', 'customers_lag_28'
+        ],
+        # Cenário B: dinâmica de vendas como exógena + lags de clientes
+        "B_Sales_Dynamics": [
+            'day_of_week', 'month',
+            'customers_lag_1', 'customers_lag_7',
+            'sales_lag_7', 'sales_roll_mean_7'
+        ],
+        # Cenário C: contexto completo (sem Num_Customers contemporâneo — seria leakage)
+        "C_Context_Expert": [
+            'customers_lag_7', 'Pct_On_Sale', 'TouristEvent',
+            'is_holiday', 'days_to_next_holiday', 'day_of_week',
+            'sales_lag_7', 'sales_roll_mean_7'
+        ]
     }
 
     master_results_list = []

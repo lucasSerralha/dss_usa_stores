@@ -147,7 +147,8 @@ def train_and_evaluate_all(file_path, output_dir='data/processed/', custom_featu
 
     # 1. Cenário Base: Seasonal Naive (Tarefa do Lucas)
     # Estratégia: Utiliza o valor de há exatamente 7 dias como previsão para hoje
-    y_pred_naive = test_df['sales_lag_7'].values
+    # v2: target = Num_Customers → usar customers_lag_7 (lag 7 de clientes)
+    y_pred_naive = test_df['customers_lag_7'].values
     store_metrics.append({
         'Model': 'Seasonal Naive',
         'MAE': mean_absolute_error(y_test, y_pred_naive),

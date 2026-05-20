@@ -17,8 +17,7 @@ O2 is derived from O3: the solution with maximum profit on the Pareto front
 already satisfies the 10 k constraint, so it IS the O2 optimum.
 Use get_o2_solution(pareto_result) to extract it.
 
-Per-day staff caps (≤8 weekday, ≤12 weekend) are enforced as an additive
-penalty in F[0], keeping n_ieq_constr focused solely on the 10 k limit.
+Restrição global (única, conforme enunciado): Total_Units ≤ 10 000.
 
 use_penalty=True  → MOEA/D:    10 k cap folded into F[0] as penalty.
 use_penalty=False → U-NSGA-III: 10 k cap exposed as n_ieq_constr=1.
@@ -39,8 +38,6 @@ if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
 from utils.profit_logic import (
-    ELASTICITY_K,
-    PROFIT_SCALE,
     STORE_PARAMS,
     calculate_daily_metrics,
 )
@@ -56,7 +53,6 @@ N_STORES = len(STORES)            # 4
 N_VARS_JOINT = N_STORES * N_VARS  # 84
 UNITS_CAP = 10_000                # hard global unit limit
 
-_PENALTY_STAFF_CAP: float = 1_000.0   # $ per excess staff·day (daily cap)
 # Per-unit penalty for the MOEA/D penalty approach.
 # Must be large enough that infeasible solutions score worse than any feasible
 # solution in the Tchebycheff scalarisation, yet not so large that the F[0]
@@ -126,13 +122,13 @@ def _evaluate_all_stores(
     store_weekends: list,
 ) -> tuple:
     """
-    Returns (total_profit, total_staff, total_units, staff_cap_penalty)
+    Returns (total_profit, total_staff, total_units)
     from a flat 84-variable individual in a single pass.
+    Formula exacta do enunciado: sem PROFIT_SCALE, sem elasticidade de clientes.
     """
     total_profit = 0.0
     total_staff = 0.0
     total_units = 0.0
-    staff_cap_penalty = 0.0
 
     for s, store in enumerate(STORES):
         x_s = x[s * N_VARS: (s + 1) * N_VARS]
@@ -147,7 +143,8 @@ def _evaluate_all_stores(
             pr = float(np.clip(x_s[d * 3], 0.00, 0.30))
             hr_x = int(round(float(np.clip(x_s[d * 3 + 1], 0, 15))))
             hr_j = int(round(float(np.clip(x_s[d * 3 + 2], 0, 15))))
-            eff_c = int(round(fc[d] * (1.0 + ELASTICITY_K * pr)))
+            # Clientes previstos sem elasticidade artificial — conforme enunciado
+            eff_c = int(round(fc[d]))
 
             m = calculate_daily_metrics(store, fw[d], eff_c, pr, hr_x, hr_j)
             store_sales += m['sales_x'] + m['sales_j']
@@ -155,14 +152,11 @@ def _evaluate_all_stores(
             total_units += m['units_x'] + m['units_j']
             total_staff += hr_x + hr_j
 
-            daily_cap = 12 if fw[d] else 8
-            excess = max(0, hr_x + hr_j - daily_cap)
-            staff_cap_penalty += excess * _PENALTY_STAFF_CAP
-
-        store_profit = (store_sales - store_hr_costs - params['W_s']) * PROFIT_SCALE
+        # Fórmula exata: R_s = Σ R_s,d - W_s (sem multiplicador de escala)
+        store_profit = store_sales - store_hr_costs - params['W_s']
         total_profit += store_profit
 
-    return total_profit, total_staff, total_units, staff_cap_penalty
+    return total_profit, total_staff, total_units
 
 
 # ===========================================================================
@@ -218,14 +212,14 @@ class JointTiaposeOptimization(ElementwiseProblem):
         )
 
     def _evaluate(self, x: np.ndarray, out: dict, *args, **kwargs) -> None:
-        profit, staff, units, staff_pen = _evaluate_all_stores(
+        profit, staff, units = _evaluate_all_stores(
             x, self.store_forecasts, self.store_weekends
         )
 
-        # F[0]: minimise negative profit; staff cap violations inflate this
-        f0 = -profit + staff_pen
+        # F[0]: minimise negative profit
+        f0 = -profit
 
-        # Global 10 k units constraint
+        # Global 10 k units constraint (único hard-constraint do enunciado)
         violation = units - UNITS_CAP  # ≤ 0 → feasible
 
         if self.use_penalty and violation > 0:

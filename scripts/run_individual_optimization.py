@@ -55,7 +55,7 @@ FORECAST_INPUTS = {
 
 DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 STORES = list(FORECAST_INPUTS.keys())
-OUT_DIR = "results/03_Optimization/individual"
+OUT_DIR = "results_v2/03_Optimization/individual"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

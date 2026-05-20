@@ -56,7 +56,7 @@ FORECAST_INPUTS = {
 
 DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"]
 STORES = list(FORECAST_INPUTS.keys())
-OUT_DIR = os.path.join("results", "03_Optimization", "individual", "monte_carlo")
+OUT_DIR = os.path.join("results_v2", "03_Optimization", "individual", "monte_carlo")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 N_SAMPLES = 20_000  # Numero de amostras Monte Carlo

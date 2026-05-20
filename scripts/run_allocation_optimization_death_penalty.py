@@ -31,8 +31,6 @@ from utils.profit_logic import (
     calculate_daily_metrics,
     calculate_weekly_profit,
     STORE_PARAMS,
-    ELASTICITY_K,
-    PROFIT_SCALE,
 )
 
 logging.basicConfig(
@@ -73,7 +71,7 @@ N_VARS_TOTAL     = N_STORES * N_VARS_PER_STORE  # 84
 
 UNIT_CAP = 10_000           # Teto de unidades de venda
 
-OUT_DIR = "results/03_Optimization/allocation_death_penalty"
+OUT_DIR = "results_v2/03_Optimization/allocation_death_penalty"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -98,9 +96,7 @@ def evaluate_store(store, decision_vars_21, forecast_customers, forecast_is_week
         hr_x_clean = max(0, int(round(hr_x_raw)))
         hr_j_clean = max(0, int(round(hr_j_raw)))
 
-        effective_customers = int(round(
-            forecast_customers[i] * (1 + ELASTICITY_K * pr_clean)
-        ))
+        effective_customers = int(round(forecast_customers[i]))
 
         metrics = calculate_daily_metrics(
             store=store,

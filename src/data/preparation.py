@@ -91,8 +91,8 @@ def prepare_store_data(file_path, output_dir='data/processed/'):
     df['sales_roll_std_7'] = df['Sales'].shift(1).rolling(window=7).std()
     
     # 9. Compatibilidade com Prophet (Nomenclatura exigida pela biblioteca)
-    df['ds'] = df['Date'] # Data
-    df['y'] = df['Sales'] # Alvo (Target)
+    df['ds'] = df['Date']           # Data
+    df['y'] = df['Num_Customers']  # Alvo (Target) — enunciado: prever nº de clientes diários
     
     # 10. Limpeza Final (Remoção de registos com NaN resultantes dos lags)
     df = df.dropna().reset_index(drop=True)

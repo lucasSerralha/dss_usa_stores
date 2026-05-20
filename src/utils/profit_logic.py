@@ -1,22 +1,8 @@
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# Parâmetros globais de comportamento económico
+# Parâmetros por loja (F_j, F_x, W_s) — conforme enunciado
 # ---------------------------------------------------------------------------
-
-# Coeficiente de elasticidade da procura ao desconto.
-# Fórmula: clientes_efetivos = clientes_previstos × (1 + ELASTICITY_K × desconto)
-# k=2.5 → desconto de 20% aumenta os clientes em 50%; desconto de 10% → +25%.
-ELASTICITY_K: float = 2.5
-
-# Multiplicador de escala financeira.
-# A fórmula de unidades vendidas opera numa escala sintética (~17 unidades/cliente
-# a preços unitários residuais). PROFIT_SCALE=35 eleva o lucro semanal para a
-# ordem de grandeza realista das lojas (€70k–€100k+), alinhando com as vendas
-# históricas observadas ($20k–$80k/dia).
-PROFIT_SCALE: int = 35
-
-# Configuração dos parâmetros por loja (F_j, F_x, W_s)
 STORE_PARAMS = {
     'baltimore':    {'F_j': 1.00, 'F_x': 1.15, 'W_s': 700},
     'lancaster':    {'F_j': 1.05, 'F_x': 1.20, 'W_s': 730},
@@ -92,51 +78,41 @@ def calculate_weekly_profit(store, weekly_plan):
         total_sales += (metrics['sales_x'] + metrics['sales_j'])
         total_hr_costs += (metrics['cost_x'] + metrics['cost_j'])
         
-    # Subtrai o custo fixo semanal da loja e aplica multiplicador de escala financeira
+    # Subtrai o custo fixo semanal da loja — fórmula exata do enunciado
     fixed_cost = STORE_PARAMS[store.lower()]['W_s']
-    final_profit = (total_sales - total_hr_costs - fixed_cost) * PROFIT_SCALE
+    final_profit = total_sales - total_hr_costs - fixed_cost
 
     return final_profit
 
 def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_is_weekend):
     """
     Função Tradutora (Wrapper) para algoritmos de Otimização (Scipy, Pymoo, DEAP).
-    
+
     decision_vars: Lista plana de 21 valores gerada pelo algoritmo.
                    Estrutura: [pr1, hr_x1, hr_j1, pr2, hr_x2, hr_j2, ... até ao dia 7]
     forecast_customers: Lista com os 7 valores previstos pelos modelos de Forecasting.
     forecast_is_weekend: Lista de 7 booleanos [True, False, ...] indicando o calendário.
-    
-    RETORNA: (Lucro_Invertido, Total_Staff, Penalizacao_Semana)
+
+    RETORNA: (Lucro_Invertido, Total_Staff, Eficiencia_Operacional)
     """
     weekly_plan = []
     total_staff = 0
-    penalizacao_semana = 0
-    
+
     for i in range(7):
         # 1. Extrair as 3 variáveis do dia 'i' do vetor plano
         pr_raw = decision_vars[i * 3]
         hr_x_raw = decision_vars[(i * 3) + 1]
         hr_j_raw = decision_vars[(i * 3) + 2]
-        
-        # 2. Impor restrições de negócio (Clipping e Arredondamento)
+
+        # 2. Impor restrições de domínio (Clipping e Arredondamento)
         pr_clean = max(0.0, min(0.30, pr_raw))
         hr_x_clean = max(0, int(round(hr_x_raw)))
         hr_j_clean = max(0, int(round(hr_j_raw)))
 
-        # Cálculo do Staff Diário para os novos Objetivos e Penalizações
-        staff_dia = hr_x_clean + hr_j_clean
-        total_staff += staff_dia
+        total_staff += hr_x_clean + hr_j_clean
 
-        # Lógica de Penalização (Cenário 3): Dias úteis com mais de 8 funcionários
-        if not forecast_is_weekend[i]:
-            if staff_dia > 8:
-                extra_staff = staff_dia - 8
-                penalizacao_semana += (extra_staff * 1000)
-
-        # Elasticidade da procura: desconto atrai mais clientes
-        # clientes_efetivos = clientes_previstos × (1 + k × desconto)
-        effective_customers = int(round(forecast_customers[i] * (1 + ELASTICITY_K * pr_clean)))
+        # Clientes previstos usados diretamente — sem elasticidade artificial
+        effective_customers = int(round(forecast_customers[i]))
 
         # 3. Montar o dicionário do dia para o cálculo do lucro
         day_data = {
@@ -147,46 +123,40 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
             'hr_j': hr_j_clean
         }
         weekly_plan.append(day_data)
-        
-    # 4. Calcular o lucro real usando a tua lógica original
+
+    # 4. Calcular o lucro real usando a fórmula do enunciado
     profit = calculate_weekly_profit(store, weekly_plan)
-    
-    # Retornamos a tripla de objetivos para a Otimização Multi-Objetivo
+
+    # Tripla de objetivos para a Otimização Multi-Objetivo
     # f1: Lucro Invertido (Minimizar -Profit == Maximizar Profit)
     # f2: Total Staff (Minimizar)
-    # f3: Penalização por excesso de Staff em dias úteis (Minimizar)
+    # f3: Eficiência Operacional (Lucro por Funcionário)
     efficiency = profit / (total_staff + 1)
 
     return (-profit, total_staff, efficiency)
 
 # ==========================================
-# TESTE DO WRAPPER DE OTIMIZAÇÃO (W5 - CENÁRIO 3)
+# VERIFICAÇÃO DE SANIDADE DA FUNÇÃO DE LUCRO
 # ==========================================
 if __name__ == "__main__":
-    import random
+    print("=" * 60)
+    print("VERIFICAÇÃO DA FÓRMULA DE LUCRO (sem PROFIT_SCALE, sem ELASTICITY)")
+    print("=" * 60)
 
-    print("--- A testar a Ponte de Otimização (3 Objetivos - Cenário 3) ---")
+    # Previsão de clientes e calendário para a semana
+    forecast_customers = [80, 65, 70, 75, 60, 90, 110]
+    forecast_weekend   = [False, False, False, False, False, True, True]
 
-    # 1. Simular uma previsão (7 dias)
-    dummy_forecast_customers = [80, 65, 70, 75, 60, 90, 110]
-    dummy_forecast_weekend = [False, False, False, False, False, True, True] 
-    
-    # 2. Simular um vetor plano (21 valores) - Forçar excesso de staff para testar penalização
-    # Vamos por 10 funcionários num dia de semana (índice 0)
-    decision_vars_test = [0.10, 5, 5] + [0.10, 1, 1]*6
+    # Plano de decisão: pr=0.10, 2 experts, 2 juniors por dia
+    decision_vars_test = [0.10, 2, 2] * 7
 
-    # 3. Executar o tradutor
-    f1, f2, f3 = optimize_weekly_wrapper(
-        decision_vars=decision_vars_test,
-        store='baltimore',
-        forecast_customers=dummy_forecast_customers,
-        forecast_is_weekend=dummy_forecast_weekend
-    )
+    for store_name in ['baltimore', 'lancaster', 'philadelphia', 'richmond']:
+        f1, f2, f3 = optimize_weekly_wrapper(
+            decision_vars=decision_vars_test,
+            store=store_name,
+            forecast_customers=forecast_customers,
+            forecast_is_weekend=forecast_weekend
+        )
+        print(f"  {store_name:<14} | Lucro = ${-f1:>8.2f} | Staff = {f2:.0f} | Eficiência = {f3:.2f}")
 
-    print("\n--- Resultados Detalhados ---")
-    print(f"Objetivo 1 (Lucro Invertido):  {f1}")
-    print(f"Objetivo 2 (Total Staff):      {f2}")
-    print(f"Objetivo 3 (Penalização):     {f3}")
-    print(f"Lucro Real Estimado:          ${-f1}")
-    
-    print("\n✅ Teste de sanidade concluído. A tripla de objetivos está formatada corretamente.")
+    print("\n[OK] Lucros na ordem correta do enunciado (sem multiplicador de escala).")
