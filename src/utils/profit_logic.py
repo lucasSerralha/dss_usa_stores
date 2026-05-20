@@ -155,7 +155,9 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
     # f1: Lucro Invertido (Minimizar -Profit == Maximizar Profit)
     # f2: Total Staff (Minimizar)
     # f3: Penalização por excesso de Staff em dias úteis (Minimizar)
-    return (-profit, total_staff, penalizacao_semana)
+    efficiency = profit / (total_staff + 1)
+
+    return (-profit, total_staff, efficiency)
 
 # ==========================================
 # TESTE DO WRAPPER DE OTIMIZAÇÃO (W5 - CENÁRIO 3)

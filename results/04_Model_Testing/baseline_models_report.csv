@@ -1,0 +1,49 @@
+Loja,Cenario,Modelo,Melhores_Parametros_ou_Config,RMSE,MAPE
+baltimore,A_Temporal_Base,Linear Regression,Standard OLS,7566.29,0.2121
+baltimore,A_Temporal_Base,Random Forest,"{'n_estimators': 100, 'max_depth': 5}",8904.1,0.3091
+baltimore,A_Temporal_Base,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",6039.2,0.148
+baltimore,A_Temporal_Base,SARIMAX,"{'order': (1,1,1)}",11803.62,0.3803
+baltimore,B_Sales_Dynamics,Linear Regression,Standard OLS,6011.45,0.1391
+baltimore,B_Sales_Dynamics,Random Forest,"{'n_estimators': 100, 'max_depth': 5}",8127.59,0.2778
+baltimore,B_Sales_Dynamics,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",5503.43,0.1304
+baltimore,B_Sales_Dynamics,SARIMAX,"{'order': (1,1,1)}",inf,9.798407535293839e+268
+baltimore,C_Context_Expert,Linear Regression,Standard OLS,5337.59,0.1485
+baltimore,C_Context_Expert,Random Forest,"{'n_estimators': 100, 'max_depth': None}",7169.38,0.2436
+baltimore,C_Context_Expert,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",7132.46,0.2063
+baltimore,C_Context_Expert,SARIMAX,"{'order': (1,1,1)}",10540.29,0.3432
+lancaster,A_Temporal_Base,Linear Regression,Standard OLS,10102.49,0.2141
+lancaster,A_Temporal_Base,Random Forest,"{'n_estimators': 50, 'max_depth': 10}",12542.37,0.2952
+lancaster,A_Temporal_Base,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",9310.18,0.1897
+lancaster,A_Temporal_Base,SARIMAX,"{'order': (1,1,1)}",17355.22,0.3787
+lancaster,B_Sales_Dynamics,Linear Regression,Standard OLS,8200.84,0.1499
+lancaster,B_Sales_Dynamics,Random Forest,"{'n_estimators': 50, 'max_depth': None}",15770.69,0.4323
+lancaster,B_Sales_Dynamics,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",8847.44,0.1854
+lancaster,B_Sales_Dynamics,SARIMAX,"{'order': (1,1,1)}",22734.05,0.5381
+lancaster,C_Context_Expert,Linear Regression,Standard OLS,8137.57,0.1848
+lancaster,C_Context_Expert,Random Forest,"{'n_estimators': 50, 'max_depth': None}",10451.01,0.2867
+lancaster,C_Context_Expert,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",11555.33,0.2819
+lancaster,C_Context_Expert,SARIMAX,"{'order': (1,1,1)}",18367.46,0.4716
+philadelphia,A_Temporal_Base,Linear Regression,Standard OLS,18240.06,0.2402
+philadelphia,A_Temporal_Base,Random Forest,"{'n_estimators': 50, 'max_depth': 5}",10082.17,0.1244
+philadelphia,A_Temporal_Base,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",14430.23,0.1854
+philadelphia,A_Temporal_Base,SARIMAX,"{'order': (1,1,1)}",18751.64,0.2432
+philadelphia,B_Sales_Dynamics,Linear Regression,Standard OLS,14009.59,0.1453
+philadelphia,B_Sales_Dynamics,Random Forest,"{'n_estimators': 50, 'max_depth': 10}",10728.62,0.1249
+philadelphia,B_Sales_Dynamics,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",13089.59,0.1676
+philadelphia,B_Sales_Dynamics,SARIMAX,"{'order': (1,1,1)}",27043.97,0.3074
+philadelphia,C_Context_Expert,Linear Regression,Standard OLS,10963.97,0.1295
+philadelphia,C_Context_Expert,Random Forest,"{'n_estimators': 50, 'max_depth': None}",9888.98,0.1207
+philadelphia,C_Context_Expert,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",11076.75,0.1512
+philadelphia,C_Context_Expert,SARIMAX,"{'order': (1,1,1)}",15937.78,0.1828
+richmond,A_Temporal_Base,Linear Regression,Standard OLS,4899.82,0.2232
+richmond,A_Temporal_Base,Random Forest,"{'n_estimators': 50, 'max_depth': 5}",4203.48,0.2074
+richmond,A_Temporal_Base,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",3793.61,0.1625
+richmond,A_Temporal_Base,SARIMAX,"{'order': (1,1,1)}",6362.43,0.2769
+richmond,B_Sales_Dynamics,Linear Regression,Standard OLS,3796.16,0.14
+richmond,B_Sales_Dynamics,Random Forest,"{'n_estimators': 50, 'max_depth': 10}",4170.51,0.2072
+richmond,B_Sales_Dynamics,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",3514.94,0.1463
+richmond,B_Sales_Dynamics,SARIMAX,"{'order': (1,1,1)}",7408.57,0.3452
+richmond,C_Context_Expert,Linear Regression,Standard OLS,2822.31,0.1198
+richmond,C_Context_Expert,Random Forest,"{'n_estimators': 50, 'max_depth': 10}",3529.27,0.1638
+richmond,C_Context_Expert,Prophet,"{'yearly_seasonality': True, 'add_regressor': 'All X'}",2798.37,0.1177
+richmond,C_Context_Expert,SARIMAX,"{'order': (1,1,1)}",4346.05,0.1833

@@ -25,7 +25,7 @@ def generate_neighbor(solution):
     if index % 3 == 0:
         neighbor[index] = max(0.0, min(0.30, neighbor[index] + random.uniform(-0.05, 0.05)))
     else:
-        neighbor[index] = max(0, neighbor[index] + random.choice([-1, 1]))
+        neighbor[index] = max(0,min(15, neighbor[index] + random.choice([-1, 1])))
     return neighbor
 
 def evaluate_solution(solution, store, forecast_customers, forecast_is_weekend):

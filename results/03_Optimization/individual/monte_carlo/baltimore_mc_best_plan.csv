@@ -1,0 +1,8 @@
+day,day_label,pr,hr_x,hr_j,total_staff,customers,is_weekend
+0,Dom,0.0887,9,7,16,97,True
+1,Seg,0.1695,10,4,14,61,False
+2,Ter,0.2001,3,13,16,65,False
+3,Qua,0.267,3,15,18,71,False
+4,Qui,0.2495,5,11,16,65,False
+5,Sex,0.1981,14,5,19,89,False
+6,Sab,0.0666,6,9,15,125,True
