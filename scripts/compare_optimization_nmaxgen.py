@@ -4,6 +4,12 @@ compare_optimization_nmaxgen.py — Sensibilidade N_MAX_GEN: MOEA/D vs U-NSGA-II
 Varre N_MAX_GEN ∈ [50, 100, 150, 200, 300] com N_RUNS corridas independentes
 e regista Hipervolume (HV) e nº soluções Pareto para cada configuração.
 
+Nota de implementação:
+  O MOEA/D (pymoo) NÃO suporta restrições explícitas (n_ieq_constr > 0).
+  Para comparação justa, as restrições de staff diário são incorporadas como
+  penalidade em F[0] no TiaposeNoCstr — abordagem idêntica à usada no problema
+  conjunto O3 (joint_problem.py).
+
 Output: results/04_Model_Testing/nmaxgen_comparison.csv
         results/04_Model_Testing/nmaxgen_convergence.png
 
@@ -26,9 +32,22 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 sys.stdout.reconfigure(encoding="utf-8")
 
-from optimization.moead_model  import run_optimization as run_moead
+from pymoo.algorithms.moo.moead  import MOEAD
+from pymoo.algorithms.moo.unsga3 import UNSGA3
+from pymoo.core.problem          import ElementwiseProblem
+from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.pm   import PM
+from pymoo.operators.sampling.rnd  import FloatRandomSampling
+from pymoo.optimize                import minimize
+from pymoo.termination.default     import DefaultMultiObjectiveTermination
+from pymoo.util.ref_dirs           import get_reference_directions
+
+from optimization.nsga2_model import (
+    IntegerRepair, dummy_profit_function,
+    N_VARS, INT_IDX, N_DAYS, XL, XU,
+    extract_pareto_solutions,
+)
 from optimization.unsga3_model import run_optimization as run_unsga3
-from optimization.nsga2_model  import dummy_profit_function
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -47,6 +66,71 @@ N_MAXGENS  = [50, 100, 150, 200, 300]
 
 HV_REF     = np.array([0.0, 210.0])   # pior ponto: [-lucro, staff]
 OUT_DIR    = os.path.join(os.path.dirname(__file__), "..", "results", "04_Model_Testing")
+
+PENALTY_STAFF = 5_000.0   # $ por unidade de staff excedente por dia (embedding restrição)
+
+
+# ---------------------------------------------------------------------------
+# Problema sem restrições explícitas — para MOEA/D
+# Staff caps integrados como penalidade em F[0]
+# ---------------------------------------------------------------------------
+class TiaposeNoCstr(ElementwiseProblem):
+    """
+    Versão do problema de otimização sem n_ieq_constr — compatível com MOEA/D.
+    As restrições de staff diário (cap 8 dias úteis, cap 12 FDS) são tratadas
+    como penalidade aditiva em F[0] (negativo do lucro).
+    """
+
+    def __init__(self, store, forecast_customers, forecast_is_weekend,
+                 profit_fn=None, penalty=PENALTY_STAFF):
+        self.store               = store
+        self.forecast_customers  = list(forecast_customers)
+        self.forecast_is_weekend = list(forecast_is_weekend)
+        self.profit_fn           = profit_fn if profit_fn is not None else dummy_profit_function
+        self.penalty             = penalty
+        self._weekday_idx = [d for d, w in enumerate(forecast_is_weekend) if not w]
+        self._weekend_idx = [d for d, w in enumerate(forecast_is_weekend) if w]
+        super().__init__(n_var=N_VARS, n_obj=2, n_ieq_constr=0,
+                         xl=XL, xu=XU, elementwise=True)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        f1, f2, _ = self.profit_fn(
+            x, self.store, self.forecast_customers, self.forecast_is_weekend
+        )
+        # Calcular violação de staff e adicionar penalidade a F[0]
+        staff = np.round(x[INT_IDX]).reshape(N_DAYS, 2).sum(axis=1)
+        pen = 0.0
+        for d in self._weekday_idx:
+            pen += max(0.0, staff[d] - 8) * self.penalty
+        for d in self._weekend_idx:
+            pen += max(0.0, staff[d] - 12) * self.penalty
+        out["F"] = [f1 + pen, f2]
+
+
+# ---------------------------------------------------------------------------
+# Corrida MOEA/D com problema sem restrições
+# ---------------------------------------------------------------------------
+def run_moead_nocstr(store, forecast_customers, forecast_is_weekend,
+                     n_max_gen=150, n_partitions=99, seed=42,
+                     verbose=False, profit_fn=None):
+    ref_dirs  = get_reference_directions("uniform", n_dim=2, n_partitions=n_partitions)
+    problem   = TiaposeNoCstr(store, forecast_customers, forecast_is_weekend,
+                              profit_fn=profit_fn)
+    algorithm = MOEAD(
+        ref_dirs=ref_dirs,
+        n_neighbors=20,
+        prob_neighbor_mating=0.9,
+        crossover=SBX(eta=15, prob=0.9, prob_var=1.0 / N_VARS),
+        mutation=PM(eta=20, prob=1.0 / N_VARS),
+        sampling=FloatRandomSampling(),
+        repair=IntegerRepair(),
+    )
+    termination = DefaultMultiObjectiveTermination(
+        xtol=1e-6, cvtol=1e-6, ftol=0.0025, period=30, n_max_gen=n_max_gen,
+    )
+    res = minimize(problem, algorithm, termination, seed=seed,
+                   verbose=verbose, save_history=False)
+    return extract_pareto_solutions(res)
 
 
 # ---------------------------------------------------------------------------
@@ -68,8 +152,8 @@ def _hv(pareto_F: np.ndarray) -> float:
 rows = []
 
 CONFIGS = [
-    ("MOEA/D",     run_moead,   {"n_partitions": 99}),
-    ("U-NSGA-III", run_unsga3,  {"n_partitions": 99}),
+    ("MOEA/D",     run_moead_nocstr, {"n_partitions": 99}),
+    ("U-NSGA-III", run_unsga3,       {"n_partitions": 99}),
 ]
 
 for algo_name, run_fn, extra_kw in CONFIGS:
@@ -142,13 +226,10 @@ colors = {"MOEA/D": "#E67E22", "U-NSGA-III": "#4A90E2"}
 for algo in df["algorithm"].unique():
     sub = df[df["algorithm"] == algo].sort_values("n_max_gen")
     c   = colors.get(algo, "grey")
-
-    # HV
     axes[0].errorbar(
         sub["n_max_gen"], sub["hv_mean"], yerr=sub["hv_std"],
         marker="o", label=algo, color=c, capsize=4, linewidth=2
     )
-    # N soluções
     axes[1].errorbar(
         sub["n_max_gen"], sub["nsol_mean"], yerr=sub["nsol_std"],
         marker="s", label=algo, color=c, capsize=4, linewidth=2

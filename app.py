@@ -394,6 +394,9 @@ if df_history is not None:
                 st.warning(f"Dados processados não encontrados para {loja_sel_raw}. Corre primeiro o pipeline.")
             else:
                 df_loja_prob = pd.read_csv(_data_path, parse_dates=["Date"])
+                # Normalizar nomes de colunas: IsWeekend → is_weekend (CSV usa maiúsculas)
+                if "IsWeekend" in df_loja_prob.columns and "is_weekend" not in df_loja_prob.columns:
+                    df_loja_prob["is_weekend"] = df_loja_prob["IsWeekend"]
 
                 # ── Treinar os 3 modelos ──────────────────────────────────────
                 with st.spinner("A treinar os modelos probabilísticos..."):
@@ -598,19 +601,25 @@ if df_history is not None:
                 df_md_p = pd.read_csv(_path_md)[['lucro_total', 'staff_total']].drop_duplicates()
                 df_u3_p = pd.read_csv(_path_u3)[['lucro_total', 'staff_total']].drop_duplicates()
 
+                # Filtrar apenas soluções com lucro positivo (viáveis de negócio)
+                df_md_pos = df_md_p[df_md_p['lucro_total'] > 0]
+                df_u3_pos = df_u3_p[df_u3_p['lucro_total'] > 0]
+
                 fig_par = go.Figure()
                 fig_par.add_trace(go.Scatter(
-                    x=df_md_p['staff_total'], y=df_md_p['lucro_total'],
-                    mode='markers', name='MOEA/D',
-                    marker=dict(color='#E67E22', size=7, opacity=0.85)
+                    x=df_md_pos['staff_total'], y=df_md_pos['lucro_total'],
+                    mode='markers', name=f'MOEA/D ({len(df_md_pos)} sol. viáveis)',
+                    marker=dict(color='#E67E22', size=8, opacity=0.85,
+                                line=dict(width=1, color='white'))
                 ))
                 fig_par.add_trace(go.Scatter(
-                    x=df_u3_p['staff_total'], y=df_u3_p['lucro_total'],
-                    mode='markers', name='U-NSGA-III',
-                    marker=dict(color='#4A90E2', size=7, opacity=0.85)
+                    x=df_u3_pos['staff_total'], y=df_u3_pos['lucro_total'],
+                    mode='markers', name=f'U-NSGA-III ({len(df_u3_pos)} sol. viáveis)',
+                    marker=dict(color='#4A90E2', size=8, opacity=0.85,
+                                line=dict(width=1, color='white'))
                 ))
                 fig_par.update_layout(
-                    title="Fronteira de Pareto: Lucro Total vs Staff Total",
+                    title="Fronteira de Pareto — Soluções com Lucro > 0",
                     xaxis_title="Staff Total (4 lojas)", yaxis_title="Lucro Total ($)",
                     margin=dict(t=60, b=10, l=10, r=10), hovermode="closest",
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
@@ -621,11 +630,13 @@ if df_history is not None:
                     df_s = pd.read_csv(_path_summ)
                     row_md = df_s[df_s['algorithm'] == 'MOEA/D'].iloc[0]
                     row_u3 = df_s[df_s['algorithm'] == 'U-NSGA-III'].iloc[0]
+                    _md_neg = len(df_md_p[df_md_p['lucro_total'] <= 0])
+                    _u3_neg = len(df_u3_p[df_u3_p['lucro_total'] <= 0])
                     st.caption(
-                        f"**MOEA/D**: {int(row_md['n_pareto_solutions'])} soluções | "
-                        f"Lucro máx: ${row_md['o3_max_profit']:,.0f}   ·   "
-                        f"**U-NSGA-III**: {int(row_u3['n_pareto_solutions'])} soluções | "
-                        f"Lucro máx: ${row_u3['o3_max_profit']:,.0f}"
+                        f"**MOEA/D**: {int(row_md['n_pareto_solutions'])} soluções totais "
+                        f"({_md_neg} com lucro ≤ 0 excluídas) | Lucro máx: ${row_md['o3_max_profit']:,.0f}   ·   "
+                        f"**U-NSGA-III**: {int(row_u3['n_pareto_solutions'])} soluções totais "
+                        f"({_u3_neg} com lucro ≤ 0 excluídas) | Lucro máx: ${row_u3['o3_max_profit']:,.0f}"
                     )
             else:
                 st.info("Corre `python scripts/run_joint_optimization_o3.py` para gerar as fronteiras de Pareto.")
@@ -636,51 +647,57 @@ if df_history is not None:
         st.markdown('<div class="sub-topic-box">📦 O2 — Alocação Conjunta (≤ 10 000 unidades)</div>', unsafe_allow_html=True)
         _path_o2_hc = os.path.join(_opt_dir, "results/03_Optimization/allocation/allocation_summary.csv")
         _path_o2_ks = os.path.join(_opt_dir, "results/03_Optimization/allocation_knapsack/allocation_summary_knapsack.csv")
+        _path_o2_dp = os.path.join(_opt_dir, "results/03_Optimization/allocation_death_penalty/allocation_summary_death_penalty.csv")
         _df_o2_hc = pd.read_csv(_path_o2_hc) if os.path.exists(_path_o2_hc) else None
         _df_o2_ks = pd.read_csv(_path_o2_ks) if os.path.exists(_path_o2_ks) else None
+        _df_o2_dp = pd.read_csv(_path_o2_dp) if os.path.exists(_path_o2_dp) else None
 
-        if _df_o2_hc is not None or _df_o2_ks is not None:
-            col_o2a, col_o2b = st.columns(2)
-            with col_o2a:
-                if _df_o2_hc is not None:
-                    _stores_hc = _df_o2_hc[_df_o2_hc['store'] != 'TOTAL']
-                    _total_hc  = float(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['lucro'].values[0])
-                    _units_hc  = int(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['unidades'].values[0])
-                    _staff_hc  = int(_df_o2_hc[_df_o2_hc['store'] == 'TOTAL']['total_staff'].values[0])
-                    fig_o2hc = px.bar(
-                        _stores_hc, x='store', y='lucro',
-                        text=_stores_hc['lucro'].map('${:,.0f}'.format),
-                        title=f"Hill Climbing — Total: ${_total_hc:,.0f}",
+        _o2_methods = [
+            ("Hill Climbing", _df_o2_hc, "#4A90E2"),
+            ("Knapsack (NSGA-II + DP)", _df_o2_ks, "#2ECC71"),
+            ("Death Penalty (HC)", _df_o2_dp, "#E67E22"),
+        ]
+        _o2_available = [(name, df_, color) for name, df_, color in _o2_methods if df_ is not None]
+
+        if _o2_available:
+            # Tabela comparativa de topo
+            _o2_compare_rows = []
+            for name, df_, _ in _o2_available:
+                _tot = df_[df_['store'] == 'TOTAL']
+                if not _tot.empty:
+                    _o2_compare_rows.append({
+                        "Método": name,
+                        "Lucro Total": f"${float(_tot['lucro'].values[0]):,.0f}",
+                        "Unidades": f"{int(_tot['unidades'].values[0]):,} / 10 000",
+                        "Staff Total": int(_tot['total_staff'].values[0]),
+                        "Desconto Médio": f"{float(_tot['avg_discount'].values[0]):.1f}%",
+                    })
+            if _o2_compare_rows:
+                _o2_best = max(_o2_compare_rows, key=lambda r: float(r["Lucro Total"].replace("$","").replace(",","")))
+                st.dataframe(pd.DataFrame(_o2_compare_rows), hide_index=True, use_container_width=True)
+                st.success(f"🏆 **Vencedor O2:** {_o2_best['Método']} — {_o2_best['Lucro Total']} mantendo ≤ 10 000 unidades.")
+            st.markdown("")
+
+            # Bar charts por método (colunas dinâmicas)
+            _cols = st.columns(len(_o2_available))
+            for col_, (name, df_, color) in zip(_cols, _o2_available):
+                with col_:
+                    _stores = df_[df_['store'] != 'TOTAL']
+                    _total  = float(df_[df_['store'] == 'TOTAL']['lucro'].values[0])
+                    _units  = int(df_[df_['store'] == 'TOTAL']['unidades'].values[0])
+                    _staff  = int(df_[df_['store'] == 'TOTAL']['total_staff'].values[0])
+                    fig_o2x = px.bar(
+                        _stores, x='store', y='lucro',
+                        text=_stores['lucro'].map('${:,.0f}'.format),
+                        title=f"{name}<br><sup>Total: ${_total:,.0f}</sup>",
                         labels={'store': 'Loja', 'lucro': 'Lucro ($)'},
-                        color='lucro', color_continuous_scale='RdYlGn',
+                        color_discrete_sequence=[color],
                     )
-                    fig_o2hc.update_traces(textposition='outside')
-                    fig_o2hc.update_layout(margin=dict(t=60, b=10, l=10, r=10),
-                                           showlegend=False, coloraxis_showscale=False)
-                    st.plotly_chart(fig_o2hc, use_container_width=True, theme="streamlit")
-                    st.caption(f"Unidades: {_units_hc:,} / 10 000  |  Staff total: {_staff_hc}")
-            with col_o2b:
-                if _df_o2_ks is not None:
-                    _stores_ks = _df_o2_ks[_df_o2_ks['store'] != 'TOTAL']
-                    _total_ks  = float(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['lucro'].values[0])
-                    _units_ks  = int(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['unidades'].values[0])
-                    _staff_ks  = int(_df_o2_ks[_df_o2_ks['store'] == 'TOTAL']['total_staff'].values[0])
-                    fig_o2ks = px.bar(
-                        _stores_ks, x='store', y='lucro',
-                        text=_stores_ks['lucro'].map('${:,.0f}'.format),
-                        title=f"Knapsack (NSGA-II + DP) — Total: ${_total_ks:,.0f}",
-                        labels={'store': 'Loja', 'lucro': 'Lucro ($)'},
-                        color='lucro', color_continuous_scale='RdYlGn',
-                    )
-                    fig_o2ks.update_traces(textposition='outside')
-                    fig_o2ks.update_layout(margin=dict(t=60, b=10, l=10, r=10),
-                                           showlegend=False, coloraxis_showscale=False)
-                    st.plotly_chart(fig_o2ks, use_container_width=True, theme="streamlit")
-                    st.caption(f"Unidades: {_units_ks:,} / 10 000  |  Staff total: {_staff_ks}")
-            if _df_o2_hc is not None and _df_o2_ks is not None:
-                _winner = "Knapsack" if _total_ks > _total_hc else "Hill Climbing"
-                _diff   = abs(_total_ks - _total_hc)
-                st.info(f"**Vencedor O2:** {_winner} com +${_diff:,.0f} de lucro adicional mantendo ≤ 10 000 unidades.")
+                    fig_o2x.update_traces(textposition='outside')
+                    fig_o2x.update_layout(margin=dict(t=70, b=10, l=10, r=10),
+                                          showlegend=False)
+                    st.plotly_chart(fig_o2x, use_container_width=True, theme="streamlit")
+                    st.caption(f"Unidades: {_units:,} / 10 000  |  Staff total: {_staff}")
         else:
             st.info("Corre `python scripts/run_allocation_optimization.py` para gerar resultados O2.")
 
@@ -736,16 +753,35 @@ if df_history is not None:
                     )
 
         st.markdown("**Simular com novos dados de clientes:**")
+        st.caption("💡 Os valores abaixo são os clientes previstos para a próxima semana, retirados do plano ótimo gerado. Podes ajustá-los para simular cenários alternativos.")
 
-        _defaults_cli = {
-            "baltimore":    [97, 61, 65, 71, 65, 89, 125],
-            "lancaster":    [116, 72, 77, 84, 77, 106, 149],
-            "philadelphia": [230, 144, 154, 168, 154, 211, 298],
-            "richmond":     [64, 40, 42, 46, 42, 58, 82],
-        }
-        _dias_rt    = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-        _fds_rt     = [True, False, False, False, False, False, True]
-        _def_cli    = _defaults_cli.get(loja_sel, [80] * 7)
+        _dias_rt = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+        _fds_rt  = [True, False, False, False, False, False, True]
+
+        # Usar clientes do best_plan (foram os usados na otimização original)
+        # Fallback: ler os últimos 7 registos do CSV processado
+        _def_cli = [80] * 7
+        if os.path.exists(_path_plan):
+            try:
+                _bp = pd.read_csv(_path_plan).sort_values('day')
+                _def_cli = [int(round(v)) for v in _bp['customers'].tolist()]
+            except Exception:
+                pass
+        else:
+            # Fallback: últimos 7 dias do CSV processado
+            _proc_path = os.path.abspath(
+                os.path.join(_opt_dir, "data", "processed", f"{loja_sel}_processed.csv")
+            )
+            if os.path.exists(_proc_path):
+                try:
+                    _proc_df = pd.read_csv(_proc_path)
+                    _split   = int(len(_proc_df) * 0.8)
+                    _tw      = _proc_df.iloc[_split:_split + 7]
+                    _def_cli = [int(round(v)) for v in _tw['Num_Customers'].tolist()]
+                    if len(_def_cli) < 7:
+                        _def_cli += [80] * (7 - len(_def_cli))
+                except Exception:
+                    pass
 
         cols_rt = st.columns(7)
         cli_rt  = []
