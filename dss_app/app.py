@@ -257,7 +257,7 @@ st.markdown('<div class="section-label">Indicadores-Chave do Sistema</div>', uns
 k1, k2, k3, k4 = st.columns(4, gap="medium")
 
 with k1:
-    val  = f"${_sa_total:,.0f}" if _sa_total else "—"
+    val  = f"€{_sa_total:,.0f}" if _sa_total else "—"
     st.markdown(f"""
     <div class="kpi-card">
       <div class="kpi-label">Lucro O1 — Melhor Algoritmo (SA)</div>
@@ -268,7 +268,7 @@ with k1:
     """, unsafe_allow_html=True)
 
 with k2:
-    val  = f"${_o2_profit:,.0f}" if _o2_profit is not None else "—"
+    val  = f"€{_o2_profit:,.0f}" if _o2_profit is not None else "—"
     un   = f"{_o2_units:,} un." if _o2_units else ""
     st.markdown(f"""
     <div class="kpi-card">
@@ -281,7 +281,7 @@ with k2:
 
 with k3:
     val  = str(_o3_n_sol) if _o3_n_sol else "—"
-    best = f"${_o3_best:,.0f}" if _o3_best else ""
+    best = f"€{_o3_best:,.0f}" if _o3_best else ""
     st.markdown(f"""
     <div class="kpi-card">
       <div class="kpi-label">Fronteira Pareto O3 (U-NSGA-III)</div>
@@ -341,7 +341,7 @@ if _d["sa"] is not None:
             st.markdown(f"""
             <div class="store-card">
               <div class="store-name">{store.capitalize()}</div>
-              <div class="store-profit">${lucro:,.0f}<span style="font-size:0.75rem;
+              <div class="store-profit">€{lucro:,.0f}<span style="font-size:0.75rem;
                 font-weight:600;color:#64748B;">/semana</span></div>
               <div class="store-metric">
                 <span>Staff total</span>

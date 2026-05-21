@@ -58,14 +58,18 @@ def calculate_daily_metrics(store, is_weekend, customers, pr, hr_x, hr_j):
     units_x = assisted_x * u_per_x
     units_j = assisted_j * u_per_j
 
-    # 4. Lucro/Vendas Diárias 
-    # Arredondamento aplicado sobre o total diário
-    sales_x = round(units_x * (1 - pr) * 1.07)
-    sales_j = round(units_j * (1 - pr) * 1.07)
+    # 4. Preço por Cliente Assistido — fórmula exacta do enunciado:
+    #    P = round(U × (1−PR) × 1.07)   ← arredondamento POR CLIENTE
+    p_x = round(u_per_x * (1 - pr) * 1.07) if assisted_x > 0 else 0
+    p_j = round(u_per_j * (1 - pr) * 1.07) if assisted_j > 0 else 0
+
+    sales_x = assisted_x * p_x
+    sales_j = assisted_j * p_j
 
     return {
         'assisted_x': assisted_x, 'assisted_j': assisted_j,
         'units_x': units_x, 'units_j': units_j,
+        'p_x': p_x, 'p_j': p_j,
         'sales_x': sales_x, 'sales_j': sales_j,
         'cost_x': cost_x, 'cost_j': cost_j
     }

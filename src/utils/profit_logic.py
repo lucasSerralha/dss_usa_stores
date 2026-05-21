@@ -44,14 +44,19 @@ def calculate_daily_metrics(store, is_weekend, customers, pr, hr_x, hr_j):
     units_x = assisted_x * u_per_x
     units_j = assisted_j * u_per_j
 
-    # 4. Lucro/Vendas Diárias 
-    # Arredondamento aplicado sobre o total diário
-    sales_x = round(units_x * (1 - pr) * 1.07)
-    sales_j = round(units_j * (1 - pr) * 1.07)
+    # 4. Preço por Cliente Assistido — fórmula exacta do enunciado:
+    #    P = round(U × (1−PR) × 1.07)   ← arredondamento POR CLIENTE
+    #    Receita do dia = ΣP × clientes_assistidos
+    p_x = round(u_per_x * (1 - pr) * 1.07) if assisted_x > 0 else 0
+    p_j = round(u_per_j * (1 - pr) * 1.07) if assisted_j > 0 else 0
+
+    sales_x = assisted_x * p_x
+    sales_j = assisted_j * p_j
 
     return {
         'assisted_x': assisted_x, 'assisted_j': assisted_j,
         'units_x': units_x, 'units_j': units_j,
+        'p_x': p_x, 'p_j': p_j,
         'sales_x': sales_x, 'sales_j': sales_j,
         'cost_x': cost_x, 'cost_j': cost_j
     }
@@ -139,17 +144,17 @@ def optimize_weekly_wrapper(decision_vars, store, forecast_customers, forecast_i
 # VERIFICAÇÃO DE SANIDADE DA FUNÇÃO DE LUCRO
 # ==========================================
 if __name__ == "__main__":
-    print("=" * 60)
-    print("VERIFICAÇÃO DA FÓRMULA DE LUCRO (sem PROFIT_SCALE, sem ELASTICITY)")
-    print("=" * 60)
+    print("=" * 65)
+    print("VERIFICAÇÃO DA FÓRMULA DE LUCRO")
+    print("Fórmula: P = round(U*(1-PR)*1.07) por cliente (arred. unitário)")
+    print("=" * 65)
 
-    # Previsão de clientes e calendário para a semana
+    # --- Teste 1: plano genérico para as 4 lojas ---
     forecast_customers = [80, 65, 70, 75, 60, 90, 110]
     forecast_weekend   = [False, False, False, False, False, True, True]
+    decision_vars_test = [0.10, 2, 2] * 7   # pr=10%, 2 experts, 2 juniors
 
-    # Plano de decisão: pr=0.10, 2 experts, 2 juniors por dia
-    decision_vars_test = [0.10, 2, 2] * 7
-
+    print("\n[Teste 1] pr=0.10, 2 experts, 2 juniors (clientes: 80-110/dia)")
     for store_name in ['baltimore', 'lancaster', 'philadelphia', 'richmond']:
         f1, f2, f3 = optimize_weekly_wrapper(
             decision_vars=decision_vars_test,
@@ -157,6 +162,22 @@ if __name__ == "__main__":
             forecast_customers=forecast_customers,
             forecast_is_weekend=forecast_weekend
         )
-        print(f"  {store_name:<14} | Lucro = ${-f1:>8.2f} | Staff = {f2:.0f} | Eficiência = {f3:.2f}")
+        print(f"  {store_name:<14} | Lucro = {-f1:>8.2f} | Staff = {f2:.0f} | Efic. = {f3:.2f}")
 
-    print("\n[OK] Lucros na ordem correta do enunciado (sem multiplicador de escala).")
+    # --- Teste 2: verificação manual de um único dia (Baltimore, pr=0) ---
+    print("\n[Teste 2] Baltimore, 1 dia, PR=0, X=2, J=2, C=80 (sem desconto)")
+    params = STORE_PARAMS['baltimore']
+    F_x, F_j = params['F_x'], params['F_j']   # 1.15, 1.00
+    pr_t, hr_x_t, hr_j_t, C_t = 0.0, 2, 2, 80
+    import math
+    u_x = round((F_x * 10) / math.log(2 - pr_t))
+    u_j = round((F_j * 10) / math.log(2 - pr_t))
+    p_x = round(u_x * (1 - pr_t) * 1.07)
+    p_j = round(u_j * (1 - pr_t) * 1.07)
+    a_x = min(hr_x_t * 7, C_t)       # 14
+    a_j = min(hr_j_t * 6, C_t - a_x) # 12 (restantes = 66, min(12,66)=12)
+    print(f"  U_x={u_x}, U_j={u_j}, P_x={p_x}, P_j={p_j}")
+    print(f"  Assistidos: X={a_x}, J={a_j}")
+    print(f"  Vendas dia: {a_x*p_x + a_j*p_j}")
+
+    print("\n[OK] Lucros fidelizados ao enunciado (arredondamento por cliente).")

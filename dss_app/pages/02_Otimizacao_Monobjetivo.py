@@ -16,6 +16,13 @@ import plotly.graph_objects as go
 
 sys.dont_write_bytecode = True
 
+# Ensure src/ is on the path so we can import profit_logic for enriched tables
+_page_dir_early = os.path.dirname(os.path.abspath(__file__))
+_root_dir_early = os.path.abspath(os.path.join(_page_dir_early, "..", ".."))
+_src_dir = os.path.join(_root_dir_early, "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Otimização Monobjetivo — DSS USA Stores",
@@ -126,6 +133,62 @@ _page_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.abspath(os.path.join(_page_dir, "..", ".."))
 _opt_dir  = os.path.join(_root_dir, "results_v2", "03_Optimization")
 
+# ── Import profit_logic for enriched plan computation ─────────────────────────
+try:
+    from utils.profit_logic import calculate_daily_metrics, STORE_PARAMS
+    _HAS_PROFIT_LOGIC = True
+except ImportError:
+    _HAS_PROFIT_LOGIC = False
+
+def _enrich_plan(df_plan: pd.DataFrame, store: str) -> pd.DataFrame:
+    """
+    Add assisted, units, sales (€), hr_cost (€), and daily_profit (€) columns
+    using the guide formula: P = round(U*(1-PR)*1.07) per customer.
+    Returns a display-ready dataframe with columns matching guide §5.2.
+    """
+    if df_plan is None or not _HAS_PROFIT_LOGIC:
+        return df_plan
+
+    rows = []
+    customers_col = "customers" if "customers" in df_plan.columns else "customers_forecast"
+    for _, r in df_plan.iterrows():
+        is_wk = bool(r["is_weekend"])
+        cust  = int(round(r[customers_col]))
+        pr    = float(r["pr"])
+        hr_x  = int(round(r["hr_x"]))
+        hr_j  = int(round(r["hr_j"]))
+        m = calculate_daily_metrics(store.lower(), is_wk, cust, pr, hr_x, hr_j)
+        rows.append({
+            "Dia":           r["day_label"],
+            "FDS":           "S" if is_wk else "",
+            "Clientes":      cust,
+            "Desconto":      f"{pr*100:.1f}%",
+            "Experts (X)":   hr_x,
+            "Juniores (J)":  hr_j,
+            "Staff Total":   hr_x + hr_j,
+            "Assist. X":     m["assisted_x"],
+            "Assist. J":     m["assisted_j"],
+            "Unidades":      m["units_x"] + m["units_j"],
+            "Vendas (€)":    m["sales_x"] + m["sales_j"],
+            "Custo RH (€)":  m["cost_x"] + m["cost_j"],
+            "Lucro Dia (€)": m["sales_x"] + m["sales_j"] - m["cost_x"] - m["cost_j"],
+        })
+    return pd.DataFrame(rows)
+
+
+def _download_btn(df: pd.DataFrame, filename: str, label: str = "Exportar CSV"):
+    """Render a Streamlit download button for a dataframe."""
+    if df is None or df.empty:
+        return
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label=label,
+        data=csv_bytes,
+        file_name=filename,
+        mime="text/csv",
+        use_container_width=False,
+    )
+
 # ── Colour palette per algorithm ───────────────────────────────────────────────
 ALG_COLORS = {
     "Monte Carlo":         "#9C27B0",
@@ -208,6 +271,16 @@ def load_alloc_dp_summary(opt_dir: str):
 @st.cache_data
 def load_alloc_dp_conv(opt_dir: str):
     p = os.path.join(opt_dir, "allocation_death_penalty", "convergence.csv")
+    return pd.read_csv(p) if os.path.exists(p) else None
+
+@st.cache_data
+def load_alloc_penalty_plan(opt_dir: str, store: str):
+    p = os.path.join(opt_dir, "allocation", f"{store.lower()}_plan.csv")
+    return pd.read_csv(p) if os.path.exists(p) else None
+
+@st.cache_data
+def load_alloc_dp_plan(opt_dir: str, store: str):
+    p = os.path.join(opt_dir, "allocation_death_penalty", f"{store.lower()}_plan.csv")
     return pd.read_csv(p) if os.path.exists(p) else None
 
 
@@ -309,7 +382,7 @@ alg_cols = ["Monte Carlo", "Hill Climbing", "Simulated Annealing", "NSGA-II"]
 available_alg = [c for c in alg_cols if c in df_o1_cmp.columns]
 
 if available_alg:
-    st.markdown('<div class="section-label">Lucro Máximo Semanal por Algoritmo e Loja ($)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">Lucro Máximo Semanal por Algoritmo e Loja (€)</div>', unsafe_allow_html=True)
 
     # Totals row
     totals = {"store": "TOTAL"}
@@ -320,9 +393,16 @@ if available_alg:
     df_fmt = df_display.copy()
     df_fmt["store"] = df_fmt["store"].str.capitalize()
     for col in available_alg:
-        df_fmt[col] = df_fmt[col].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A")
+        df_fmt[col] = df_fmt[col].apply(lambda x: f"€{x:,.0f}" if pd.notna(x) else "N/A")
     df_fmt = df_fmt.rename(columns={"store": "Loja"})
     st.dataframe(df_fmt, hide_index=True, use_container_width=True)
+
+    # Download comparison table
+    _download_btn(
+        df_o1_cmp.rename(columns={"store": "Loja"}),
+        "o1_comparacao_algoritmos.csv",
+        "⬇ Exportar Tabela Comparativa (CSV)",
+    )
 
     # ── Grouped bar chart ─────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
@@ -338,7 +418,7 @@ if available_alg:
             y=values,
             marker_color=ALG_COLORS.get(alg, "#94A3B8"),
             opacity=0.88,
-            text=[f"${v:,.0f}" for v in values],
+            text=[f"€{v:,.0f}" for v in values],
             textposition="outside",
             textfont=dict(size=9),
         ))
@@ -359,12 +439,12 @@ if available_alg:
             gridcolor="#F1F5F9",
         ),
         yaxis=dict(
-            title=dict(text="Lucro Semanal ($)", font=dict(color="#0F172A", size=11)),
+            title=dict(text="Lucro Semanal (€)", font=dict(color="#0F172A", size=11)),
             tickfont=dict(color="#0F172A", size=10),
             gridcolor="#F1F5F9",
             zeroline=True,
             zerolinecolor="#E2E8F0",
-            tickformat="$,.0f",
+            tickformat="€,.0f",
         ),
     )
     st.plotly_chart(fig_cmp, use_container_width=True)
@@ -411,14 +491,19 @@ with tab_mc:
 
     if mc_lucro is not None:
         col1, col2, col3 = st.columns(3, gap="medium")
-        col1.metric("Melhor Lucro", f"${mc_lucro:,.0f}")
-        col2.metric("Lucro Médio", f"${mc_medio:,.0f}")
-        col3.metric("Desvio Padrão", f"${mc_std:,.0f}")
+        col1.metric("Melhor Lucro", f"€{mc_lucro:,.0f}")
+        col2.metric("Lucro Médio", f"€{mc_medio:,.0f}")
+        col3.metric("Desvio Padrão", f"€{mc_std:,.0f}")
         st.caption(f"Amostras avaliadas: {mc_n:,} | Seed: 42")
 
     if df_mc_plan is not None:
+        df_mc_enriched = _enrich_plan(df_mc_plan, loja_sel)
         st.markdown("**Plano Semanal Ótimo (Monte Carlo)**")
-        st.dataframe(_plan_table(df_mc_plan), hide_index=True, use_container_width=True)
+        if df_mc_enriched is not None:
+            st.dataframe(df_mc_enriched, hide_index=True, use_container_width=True)
+            _download_btn(df_mc_enriched, f"mc_plano_{loja_sel.lower()}.csv", "⬇ Exportar Plano (CSV)")
+        else:
+            st.dataframe(_plan_table(df_mc_plan), hide_index=True, use_container_width=True)
 
     if df_mc_conv is not None:
         step = max(1, len(df_mc_conv) // 400)
@@ -457,14 +542,19 @@ with tab_hc:
 
     if hc_lucro is not None:
         col1, col2, col3 = st.columns(3, gap="medium")
-        col1.metric("Melhor Lucro", f"${hc_lucro:,.0f}")
+        col1.metric("Melhor Lucro", f"€{hc_lucro:,.0f}")
         col2.metric("Staff Total", hc_staff)
         col3.metric("Desconto Médio", f"{hc_discount:.2f}%")
         st.caption("10 restarts × 2 000 iterações | Seed: 42")
 
     if df_hc_plan is not None:
+        df_hc_enriched = _enrich_plan(df_hc_plan, loja_sel)
         st.markdown("**Plano Semanal Ótimo (Hill Climbing)**")
-        st.dataframe(_plan_table(df_hc_plan), hide_index=True, use_container_width=True)
+        if df_hc_enriched is not None:
+            st.dataframe(df_hc_enriched, hide_index=True, use_container_width=True)
+            _download_btn(df_hc_enriched, f"hc_plano_{loja_sel.lower()}.csv", "⬇ Exportar Plano (CSV)")
+        else:
+            st.dataframe(_plan_table(df_hc_plan), hide_index=True, use_container_width=True)
 
     if df_hc_conv is not None:
         step = max(1, len(df_hc_conv) // 400)
@@ -480,7 +570,7 @@ with tab_hc:
             x=[df_hc_conv["iteration"].max()], y=[lucro_max],
             mode="markers+text",
             marker=dict(color="#1E3A8A", size=9),
-            text=[f"  ${lucro_max:,.0f}"],
+            text=[f"  €{lucro_max:,.0f}"],
             textposition="middle right",
             textfont=dict(color="#0F172A", size=10),
             showlegend=False,
@@ -491,8 +581,8 @@ with tab_hc:
             title=dict(text="Convergência Hill Climbing",
                        font=dict(size=11, color="#64748B")),
             xaxis=dict(title="Iteração", tickfont=dict(size=10), gridcolor="#F1F5F9", zeroline=False),
-            yaxis=dict(title="Lucro ($)", tickfont=dict(size=10), gridcolor="#F1F5F9",
-                       tickformat="$,.0f", zeroline=False),
+            yaxis=dict(title="Lucro (€)", tickfont=dict(size=10), gridcolor="#F1F5F9",
+                       tickformat="€,.0f", zeroline=False),
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -514,14 +604,19 @@ with tab_sa:
 
     if sa_lucro is not None:
         col1, col2, col3 = st.columns(3, gap="medium")
-        col1.metric("Melhor Lucro", f"${sa_lucro:,.0f}")
+        col1.metric("Melhor Lucro", f"€{sa_lucro:,.0f}")
         col2.metric("Staff Total", sa_staff)
         col3.metric("Desconto Médio", f"{sa_discount:.2f}%")
         st.caption("5 restarts | T_init=5000 | alpha=0.995 | ~1701 passos de temperatura")
 
     if df_sa_plan is not None:
+        df_sa_enriched = _enrich_plan(df_sa_plan, loja_sel)
         st.markdown("**Plano Semanal Ótimo (Simulated Annealing)**")
-        st.dataframe(_plan_table(df_sa_plan), hide_index=True, use_container_width=True)
+        if df_sa_enriched is not None:
+            st.dataframe(df_sa_enriched, hide_index=True, use_container_width=True)
+            _download_btn(df_sa_enriched, f"sa_plano_{loja_sel.lower()}.csv", "⬇ Exportar Plano (CSV)")
+        else:
+            st.dataframe(_plan_table(df_sa_plan), hide_index=True, use_container_width=True)
 
     if df_sa_conv is not None:
         step = max(1, len(df_sa_conv) // 400)
@@ -559,7 +654,7 @@ with tab_n2:
 
     if n2_lucro is not None:
         col1, col2, col3 = st.columns(3, gap="medium")
-        col1.metric("Melhor Lucro (max Pareto)", f"${n2_lucro:,.0f}")
+        col1.metric("Melhor Lucro (max Pareto)", f"€{n2_lucro:,.0f}")
         col2.metric("Soluções Pareto", n2_n)
         col3.metric("Staff @ Max Lucro", n2_staff)
         st.caption("NSGA-II | Pop=100 | Até 500 gerações | Seed: 42")
@@ -576,7 +671,7 @@ with tab_n2:
                 size=8, opacity=0.85,
                 colorbar=dict(title=dict(text="Lucro ($)", font=dict(size=10))),
             ),
-            hovertemplate="Staff: %{x}<br>Lucro: $%{y:,.0f}<extra></extra>",
+            hovertemplate="Staff: %{x}<br>Lucro: €%{y:,.0f}<extra></extra>",
         ))
         # Highlight max-profit point
         if len(df_n2_pareto):
@@ -593,8 +688,8 @@ with tab_n2:
             margin=dict(t=10, b=40, l=10, r=60), showlegend=False,
             xaxis=dict(title="Staff Total (semana)", tickfont=dict(size=10),
                        gridcolor="#F1F5F9", zeroline=False),
-            yaxis=dict(title="Lucro ($)", tickfont=dict(size=10),
-                       gridcolor="#F1F5F9", tickformat="$,.0f", zeroline=False),
+            yaxis=dict(title="Lucro (€)", tickfont=dict(size=10),
+                       gridcolor="#F1F5F9", tickformat="€,.0f", zeroline=False),
         )
         st.plotly_chart(fig_p, use_container_width=True)
 
@@ -611,8 +706,11 @@ with tab_n2:
                 "Dia": dl, "% Desconto": f"{pr*100:.2f}%",
                 "Experts": hr_x, "Juniores": hr_j, "Staff Total": hr_x + hr_j,
             })
+        df_n2_plan_display = pd.DataFrame(plan_rows)
         st.markdown("**Plano Semanal da Solução com Máximo Lucro (Pareto)**")
-        st.dataframe(pd.DataFrame(plan_rows), hide_index=True, use_container_width=True)
+        st.dataframe(df_n2_plan_display, hide_index=True, use_container_width=True)
+        _download_btn(df_n2_plan_display, f"nsga2_plano_{loja_sel.lower()}.csv", "⬇ Exportar Plano (CSV)")
+        _download_btn(df_n2_pareto, f"nsga2_pareto_{loja_sel.lower()}.csv", "⬇ Exportar Fronteira Pareto (CSV)")
     else:
         st.info(f"Dados NSGA-II não encontrados para {loja_sel}. Execute: python scripts/run_optimization.py")
 
@@ -649,9 +747,9 @@ def _build_o2_comparison():
         total = df[df["store"] == "TOTAL"].iloc[0]
         rows.append({
             "Algoritmo":    name,
-            "Lucro Total":  f"${float(total['lucro']):,.0f}",
+            "Lucro Total":  f"€{float(total['lucro']):,.0f}",
             "Unidades":     f"{int(total['unidades']):,}",
-            "Restrição OK": "SIM" if int(total['unidades']) <= LIMIT else "NAO",
+            "Restrição OK": "✅ SIM" if int(total['unidades']) <= LIMIT else "❌ NÃO",
             "Staff Total":  int(total["total_staff"]),
         })
     return pd.DataFrame(rows)
@@ -677,7 +775,7 @@ def _constraint_card(label, df_summary):
         <div class="c-title">{label}</div>
         <div class="c-value">{units:,} unidades</div>
         <div style="font-size:0.80rem;color:{'#065F46' if ok else '#7F1D1D'};margin-top:4px;">
-            Lucro: ${lucro:,.0f}
+            Lucro: €{lucro:,.0f}
         </div>
         <div><span class="c-badge">{badge}</span></div>
     </div>
@@ -699,11 +797,11 @@ def _format_alloc_df(df):
         return None
     stores_df = df[df["store"] != "TOTAL"].copy()
     stores_df["Loja"]        = stores_df["store"].str.capitalize()
-    stores_df["Lucro ($)"]   = stores_df["lucro"].apply(lambda x: f"${x:,.0f}")
+    stores_df["Lucro (€)"]   = stores_df["lucro"].apply(lambda x: f"€{x:,.0f}")
     stores_df["Unidades"]    = stores_df["unidades"].apply(lambda x: f"{int(x):,}")
     stores_df["Staff Total"] = stores_df["total_staff"].astype(int)
     stores_df["Desc. Médio"] = stores_df["avg_discount"].apply(lambda x: f"{x:.2f}%")
-    return stores_df[["Loja", "Lucro ($)", "Unidades", "Staff Total", "Desc. Médio"]]
+    return stores_df[["Loja", "Lucro (€)", "Unidades", "Staff Total", "Desc. Médio"]]
 
 tab_o2_p, tab_o2_dp = st.tabs(["HC + Penalty Function", "HC + Death Penalty"])
 
@@ -711,6 +809,12 @@ with tab_o2_p:
     df_p_fmt = _format_alloc_df(df_alloc_p)
     if df_p_fmt is not None:
         st.dataframe(df_p_fmt, hide_index=True, use_container_width=True)
+        # Per-store plan download
+        _store_plans_p = [load_alloc_penalty_plan(_opt_dir, s) for s in STORES]
+        _store_plans_p = [df for df in _store_plans_p if df is not None]
+        if _store_plans_p:
+            _combined_p = pd.concat(_store_plans_p, ignore_index=True)
+            _download_btn(_combined_p, "o2_penalty_plano_todas_lojas.csv", "⬇ Exportar Planos (CSV)")
 
         # Convergence chart
         df_pconv = load_alloc_penalty_conv(_opt_dir)
@@ -744,6 +848,12 @@ with tab_o2_dp:
     df_dp_fmt = _format_alloc_df(df_alloc_dp)
     if df_dp_fmt is not None:
         st.dataframe(df_dp_fmt, hide_index=True, use_container_width=True)
+        # Per-store plan download
+        _store_plans_dp = [load_alloc_dp_plan(_opt_dir, s) for s in STORES]
+        _store_plans_dp = [df for df in _store_plans_dp if df is not None]
+        if _store_plans_dp:
+            _combined_dp = pd.concat(_store_plans_dp, ignore_index=True)
+            _download_btn(_combined_dp, "o2_death_penalty_plano_todas_lojas.csv", "⬇ Exportar Planos (CSV)")
 
         # Convergence chart
         df_dpconv = load_alloc_dp_conv(_opt_dir)

@@ -234,7 +234,7 @@ for i, (_, row) in enumerate(top3.iterrows()):
             <div class="podium-model">{row["Model"]}</div>
             <div class="podium-metric">
                 <span>RMSE</span>
-                <span class="podium-metric-value">${row["RMSE"]:,.0f}</span>
+                <span class="podium-metric-value">{row["RMSE"]:.2f} clientes</span>
             </div>
             <div class="podium-metric">
                 <span>MAPE</span>
@@ -253,7 +253,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.caption(
-    "Nota Técnica: RMSE, MAPE e NMAE são métricas de erro. "
+    "Nota Técnica: RMSE e MAE em número de clientes. MAPE e NMAE em percentagem. "
     "Valores menores indicam maior precisão."
 )
 
@@ -268,7 +268,7 @@ fig_bar = go.Figure(go.Bar(
     y=df_sorted["Model"],
     orientation="h",
     marker_color=bar_colors,
-    text=df_sorted["RMSE"].map("${:,.0f}".format),
+    text=df_sorted["RMSE"].map("{:.2f}".format),
     textposition="outside",
     textfont=dict(color="#0F172A", size=11),
 ))
@@ -280,7 +280,7 @@ fig_bar.update_layout(
     margin=dict(t=10, b=40, l=10, r=110),
     showlegend=False,
     xaxis=dict(
-        title=dict(text="RMSE ($)", font=dict(color="#0F172A", size=12)),
+        title=dict(text="RMSE (clientes)", font=dict(color="#0F172A", size=12)),
         tickfont=dict(color="#0F172A", size=11),
         gridcolor="#F1F5F9",
         zeroline=False,
@@ -312,11 +312,11 @@ if _has_nmae:
     display_cols.append("NMAE")
 
 df_display = df_sorted[display_cols].copy()
-df_display["RMSE"] = df_display["RMSE"].map("${:,.0f}".format)
+df_display["RMSE"] = df_display["RMSE"].map("{:.2f}".format)
 df_display["MAPE"] = df_display["MAPE"].map("{:.2f}%".format)
 if _has_mae:
     df_display["MAE"] = df_display["MAE"].apply(
-        lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A"
+        lambda x: f"{x:.2f}" if pd.notna(x) else "N/A"
     )
 if _has_nmae:
     df_display["NMAE"] = df_display["NMAE"].apply(
@@ -325,10 +325,20 @@ if _has_nmae:
 
 st.dataframe(df_display, hide_index=True, use_container_width=True)
 
+# ── Export leaderboard ─────────────────────────────────────────────────────────
+csv_leaderboard = df_sorted[display_cols].to_csv(index=False).encode("utf-8")
+st.download_button(
+    label="⬇ Exportar Leaderboard (CSV)",
+    data=csv_leaderboard,
+    file_name=f"leaderboard_{loja_sel.lower()}_{cenario_sel}.csv",
+    mime="text/csv",
+    use_container_width=False,
+)
+
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="dss-footer">
     DSS &nbsp;|&nbsp; Auditoria de Modelos &nbsp;|&nbsp;
-    TimeSeriesSplit cross-validation &nbsp;|&nbsp; Todos os valores monetários em USD
+    TimeSeriesSplit cross-validation &nbsp;|&nbsp; RMSE/MAE em nº de clientes &nbsp;|&nbsp; MAPE/NMAE em %
 </div>
 """, unsafe_allow_html=True)
