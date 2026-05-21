@@ -231,7 +231,7 @@ def compute_profiles(df: pd.DataFrame, w: float) -> pd.DataFrame:
             "Perfil":           label,
             "Criterio":         sublabel,
             "_badge":           badge,
-            "Lucro Total (€)":  f"€{row['lucro_total']:,.0f}",
+            "Lucro Total ($)":  f"${row['lucro_total']:,.0f}",
             "Staff Total":      int(row["staff_total"]),
             "Desc. Medio (%)":  f"{row['avg_discount_pct']:.2f}%",
             "_lucro_raw":       float(row["lucro_total"]),
@@ -428,7 +428,7 @@ with col_params:
                 "1 - w (peso RH)",
                 "Lucro normalizado",
                 "Staff normalizado",
-                "Lucro Total (€)",
+                "Lucro Total ($)",
                 "Staff Total",
             ],
             "Valor": [
@@ -436,7 +436,7 @@ with col_params:
                 f"{1 - w_val:.2f}",
                 f"{l_n_opt:.3f}",
                 f"{s_n_opt:.3f}",
-                f"€{opt['lucro_total']:,.0f}",
+                f"${opt['lucro_total']:,.0f}",
                 f"{int(opt['staff_total'])}",
             ],
         })
@@ -453,9 +453,9 @@ if df_summ is not None:
     <div class="stats-strip">
         Fonte activa: <strong>{src_label}</strong> ({n_sol} solucoes) &nbsp;|&nbsp;
         U-NSGA-III pre-calc: <strong>{int(row_u3['n_pareto_solutions'])} solucoes</strong>,
-        max lucro <strong>€{row_u3['o3_max_profit']:,.0f}</strong> &nbsp;|&nbsp;
+        max lucro <strong>${row_u3['o3_max_profit']:,.0f}</strong> &nbsp;|&nbsp;
         MOEA/D: <strong>{int(row_md['n_pareto_solutions'])} solucoes</strong>,
-        max lucro <strong>€{row_md['o3_max_profit']:,.0f}</strong>
+        max lucro <strong>${row_md['o3_max_profit']:,.0f}</strong>
     </div>
     """, unsafe_allow_html=True)
 
@@ -536,7 +536,7 @@ if df_active is not None and not df_active.empty:
         hovertemplate=(
             "<b>Solucao Pareto</b><br>"
             "Staff: %{x}<br>"
-            "Lucro: €%{y:,.0f}<br>"
+            "Lucro: $%{y:,.0f}<br>"
             "Desc. Medio: %{marker.color:.2f}%"
             "<extra></extra>"
         ),
@@ -552,7 +552,7 @@ if df_active is not None and not df_active.empty:
     )
     fig.add_annotation(
         x=x_range[0] + 1, y=0,
-        text="Break-even (€0)",
+        text="Break-even ($0)",
         showarrow=False,
         yshift=10,
         font=dict(color="#94A3B8", size=9),
@@ -574,7 +574,7 @@ if df_active is not None and not df_active.empty:
         hovertemplate=(
             f"<b>Plano Sugerido (w={w_val:.2f})</b><br>"
             "Staff: %{x}<br>"
-            "Lucro: €%{y:,.0f}<extra></extra>"
+            "Lucro: $%{y:,.0f}<extra></extra>"
         ),
     ))
 
@@ -582,7 +582,7 @@ if df_active is not None and not df_active.empty:
     fig.add_annotation(
         x=opt_staff,
         y=opt_lucro,
-        text=f"<b>Plano Sugerido</b><br>w = {w_val:.2f}<br>€{opt_lucro:,.0f}",
+        text=f"<b>Plano Sugerido</b><br>w = {w_val:.2f}<br>${opt_lucro:,.0f}",
         showarrow=True,
         arrowhead=2,
         arrowwidth=2,
@@ -617,10 +617,10 @@ if df_active is not None and not df_active.empty:
             zeroline=False,
         ),
         yaxis=dict(
-            title=dict(text="Lucro Total (€) — Maximizar", font=dict(color="#0F172A", size=12)),
+            title=dict(text="Lucro Total ($) — Maximizar", font=dict(color="#0F172A", size=12)),
             tickfont=dict(color="#0F172A", size=11),
             gridcolor="#F1F5F9",
-            tickformat="€,.0f",
+            tickformat="$,.0f",
             zeroline=False,
         ),
     )
@@ -630,7 +630,7 @@ if df_active is not None and not df_active.empty:
     st.markdown(f"""
     <div class="optimal-callout">
         <strong>Plano Sugerido (w = {w_val:.2f}):</strong>
-        Lucro = <strong>€{opt_lucro:,.0f}</strong> &nbsp;|&nbsp;
+        Lucro = <strong>${opt_lucro:,.0f}</strong> &nbsp;|&nbsp;
         Staff = <strong>{int(opt_staff)} funcionarios</strong> &nbsp;|&nbsp;
         Desconto medio = <strong>{opt_disc:.2f}%</strong>
         <br>
@@ -659,7 +659,7 @@ if df_sp is not None:
         mode="markers+lines",
         marker=dict(color="#1E3A8A", size=7, opacity=0.85),
         line=dict(color="#CBD5E1", width=1.5),
-        hovertemplate="Staff: %{x}<br>Lucro: €%{y:,.0f}<extra></extra>",
+        hovertemplate="Staff: %{x}<br>Lucro: $%{y:,.0f}<extra></extra>",
     ))
     fig_sp.add_hline(
         y=0, line_dash="dot", line_color="#DC2626", line_width=1.5,
@@ -676,9 +676,9 @@ if df_sp is not None:
             tickfont=dict(color="#0F172A", size=10), gridcolor="#F1F5F9", zeroline=False,
         ),
         yaxis=dict(
-            title=dict(text="Lucro (€)", font=dict(color="#0F172A", size=11)),
+            title=dict(text="Lucro ($)", font=dict(color="#0F172A", size=11)),
             tickfont=dict(color="#0F172A", size=10), gridcolor="#F1F5F9",
-            tickformat="€,.0f", zeroline=False,
+            tickformat="$,.0f", zeroline=False,
         ),
     )
     st.plotly_chart(fig_sp, use_container_width=True)
@@ -689,8 +689,8 @@ if df_sp is not None:
     delta_s = max_s - min_s or 1
     st.caption(
         f"{loja_sel} — {len(df_sp)} solucoes Pareto (NSGA-II). "
-        f"Trade-off: ~€{(max_l - min_l) / delta_s:,.0f} de lucro por funcionario adicional. "
-        f"Staff [{min_s:.0f} – {max_s:.0f}] | Lucro [€{min_l:,.0f} – €{max_l:,.0f}]."
+        f"Trade-off: ~${(max_l - min_l) / delta_s:,.0f} de lucro por funcionario adicional. "
+        f"Staff [{min_s:.0f} – {max_s:.0f}] | Lucro [${min_l:,.0f} – ${max_l:,.0f}]."
     )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -723,7 +723,7 @@ if not df_profiles.empty:
                 <span class="profile-badge {row['_badge']}">{profile_labels[i]}</span>
                 <div class="profile-label">{row["Criterio"]}</div>
                 <div class="profile-value {'profile-value-blue' if i == 0 else ''}">
-                    {row["Lucro Total (€)"]}
+                    {row["Lucro Total ($)"]}
                 </div>
                 <div class="profile-sub">
                     Staff: <strong>{row["Staff Total"]}</strong> &nbsp;|&nbsp;
@@ -737,7 +737,7 @@ if not df_profiles.empty:
 
     # Tabela comparativa
     st.markdown('<div class="section-label">Tabela Comparativa</div>', unsafe_allow_html=True)
-    df_tbl = df_profiles[["Perfil", "Criterio", "Lucro Total (€)", "Staff Total", "Desc. Medio (%)"]].copy()
+    df_tbl = df_profiles[["Perfil", "Criterio", "Lucro Total ($)", "Staff Total", "Desc. Medio (%)"]].copy()
     st.dataframe(df_tbl, hide_index=True, use_container_width=True)
 
     # Botões de exportação
