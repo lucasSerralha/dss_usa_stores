@@ -14,6 +14,7 @@ comentários.txt
 .claude-code/
 CLAUDE.md
 ._*
+.antigravitycli
 
 # Runtime logs
 logs/*.log
