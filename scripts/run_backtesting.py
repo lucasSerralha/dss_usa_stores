@@ -1,12 +1,13 @@
 """
-run_backtesting.py — Walk-forward backtesting com TimeSeriesSplit (N_SPLITS >= 10)
+run_backtesting.py — Walk-forward backtesting com TimeSeriesSplit (N_SPLITS > 10)
 
 Para cada loja e cada fold:
   - Treina Random Forest, Regressão Linear e Holt-Winters
   - Avalia MAE, RMSE, MAPE, NMAE
-  - Usa o mesmo conjunto de features do experimento C_Context_Expert (sem leakage de Num_Employees)
+  - TARGET: Num_Customers (v2 — enunciado obriga prever nº de clientes diários)
+  - Features: lags de clientes + variáveis exógenas (sem Num_Customers contemporâneo)
 
-Output: results/05_Backtesting/
+Output: results_v2/05_Backtesting/
   backtesting_results.csv   — métricas por fold e por loja
   backtesting_summary.csv   — média das métricas agregada por loja e modelo
   {store}_backtesting.png   — evolução dos erros por fold
@@ -33,15 +34,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("TIAPOSE.Backtesting")
 
-N_SPLITS = 10
-# Mesmo conjunto do C_Context_Expert (sem Num_Employees)
+N_SPLITS = 11  # enunciado exige >10 iterações de backtesting
+# Features alinhadas com C_Context_Expert v2 (target = Num_Customers)
+# Num_Customers foi removido: é agora o TARGET, não uma feature (evitar leakage circular)
 FEATURES = [
-    'Num_Customers', 'Pct_On_Sale', 'TouristEvent', 'is_holiday',
-    'days_to_next_holiday', 'day_of_week', 'sales_lag_1', 'sales_lag_7',
+    'customers_lag_7', 'Pct_On_Sale', 'TouristEvent', 'is_holiday',
+    'days_to_next_holiday', 'day_of_week', 'sales_lag_7',
     'sales_roll_mean_7'
 ]
 DATA_DIR = "data/processed"
-OUT_DIR  = "results/05_Backtesting"
+OUT_DIR  = "results_v2/05_Backtesting"
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+23:52:29 [INFO] TIAPOSE.MOEAD — MOEA/D Joint (O3) | n_var=84 | subproblemas=100 | vizinhos=20 | max_gen=300 | seed=42
+23:52:29 [INFO] TIAPOSE.Joint — JointProblem (O3) | n_var=84 | n_obj=2 | n_ieq=0 | use_penalty=True
+23:53:48 [INFO] TIAPOSE.MOEAD — MOEA/D Joint concluído em 301 gerações.
+23:53:48 [INFO] TIAPOSE.Joint — Pareto conjunto (O3): 35 soluções | Lucro [-1002, 589] | Staff [51, 86]
+23:53:48 [INFO] TIAPOSE.UNSGA3 — U-NSGA-III Joint (O3) | n_var=84 | pop=100 | direções=100 | max_gen=300 | seed=42
+23:53:48 [INFO] TIAPOSE.Joint — JointProblem (O3) | n_var=84 | n_obj=2 | n_ieq=1 | use_penalty=False
+23:54:38 [INFO] TIAPOSE.UNSGA3 — U-NSGA-III Joint concluído em 301 gerações.
+23:54:38 [INFO] TIAPOSE.Joint — Pareto conjunto (O3): 56 soluções | Lucro [-1620, 955] | Staff [27, 85]
+23:54:38 [INFO] TIAPOSE.JointOpt — Pareto CSV saved → results_v2/03_Optimization/joint_o3\joint_pareto_moead.csv  (35 solutions)
+23:54:38 [INFO] TIAPOSE.JointOpt — Pareto CSV saved → results_v2/03_Optimization/joint_o3\joint_pareto_unsga3.csv  (56 solutions)
+23:54:41 [INFO] TIAPOSE.JointOpt — Best plan plot saved → results_v2/03_Optimization/joint_o3\joint_best_plan_moead.png
+23:54:43 [INFO] TIAPOSE.JointOpt — Best plan plot saved → results_v2/03_Optimization/joint_o3\joint_best_plan_u-nsga-iii.png
+23:54:43 [INFO] TIAPOSE.JointOpt — Pareto comparison saved → results_v2/03_Optimization/joint_o3\joint_pareto_comparison.png

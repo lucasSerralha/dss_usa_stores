@@ -1,7 +1,7 @@
 """
 nsga2_model.py — NSGA-II Multi-Objective Optimization — TIAPOSE DSS
 
-Problema: Otimizar a escala semanal de uma loja de retalho.
+Problema: Otimizar a escala semanal de uma loja de retalho (O1/O2).
   21 variáveis de decisão (3 por dia × 7 dias):
     x[3d+0] = pr_d   ∈ [0.00, 0.30]   desconto diário (float)
     x[3d+1] = hr_x_d ∈ {0, …, 15}     staff perito (int)
@@ -11,15 +11,9 @@ Problema: Otimizar a escala semanal de uma loja de retalho.
     F[0] = -Lucro_semanal          maximizar lucro == minimizar negativo
     F[1] =  Staff_Total_semanal    minimizar headcount
 
-  Restrições de negócio (G_d ≤ 0 → viável):
-    G[d] = (hr_x_d + hr_j_d) − 8   para cada dia útil d   (cap weekday = 8)
-    G[d] = (hr_x_d + hr_j_d) − 12  para cada fim-de-semana d (cap weekend = 12)
-
-Nota de design:
-  Em vez de codificar o excesso de staff como penalização num 3.º objetivo
-  (abordagem de penalty function), usamos n_ieq_constr do pymoo. Desta forma
-  o NSGA-II separa soluções viáveis de inviáveis via constraint-dominance,
-  o que é matematicamente mais correto e converge mais rapidamente.
+  Sem restrições de desigualdade (G) neste nível — o custo de RH já penaliza
+  naturalmente o excesso de staff. O teto de 10 000 unidades (O2/O3) é
+  tratado no joint_problem.py.
 """
 
 import logging
@@ -190,43 +184,30 @@ class TiaposeOptimization(ElementwiseProblem):
         # Injeção de dependência: real por defeito, dummy se explicitamente pedido
         self.profit_fn = profit_fn if profit_fn is not None else optimize_weekly_wrapper
 
-        # Índices dos dias úteis e fins-de-semana para as restrições G
-        self._weekday_idx: np.ndarray = np.array(
-            [d for d, is_wk in enumerate(forecast_is_weekend) if not is_wk]
-        )
-        self._weekend_idx: np.ndarray = np.array(
-            [d for d, is_wk in enumerate(forecast_is_weekend) if is_wk]
-        )
-        # Total de restrições = dias úteis (cap 8) + fins de semana (cap 12)
-        n_constraints = len(self._weekday_idx) + len(self._weekend_idx)
-
+        # Sem restrições de desigualdade — o custo de RH penaliza naturalmente
+        # o excesso de staff. O teto de 10 000 unidades (O2/O3) está em joint_problem.py.
         super().__init__(
             n_var=N_VARS,
-            n_obj=2,                      # F[0]=-Lucro, F[1]=Staff Total
-            n_ieq_constr=n_constraints,   # G weekday ≤ 8, G weekend ≤ 12
+            n_obj=2,          # F[0]=-Lucro, F[1]=Staff Total
+            n_ieq_constr=0,   # sem hard constraints neste nível (O1)
             xl=XL,
             xu=XU,
-            elementwise=True,             # _evaluate recebe um vetor 1-D por chamada
+            elementwise=True,
         )
 
         log.info(
-            "Problema criado | loja=%-12s | dias_úteis=%d | fins_semana=%d | restrições_G=%d",
-            store, len(self._weekday_idx), len(self._weekend_idx), n_constraints,
+            "Problema criado | loja=%-12s | n_obj=2 | n_ieq=0",
+            store,
         )
 
     def _evaluate(self, x: np.ndarray, out: dict, *args, **kwargs) -> None:
         """
-        Avalia um único indivíduo x ∈ ℝ^21 e preenche out['F'] e out['G'].
-
-        Chamado pelo pymoo para cada membro da população a cada geração.
-        O paralelismo entre indivíduos é gerido externamente pelo runner
-        (ver parâmetro runner= em minimize()).
+        Avalia um único indivíduo x ∈ ℝ^21 e preenche out['F'].
 
         Estrutura de x (21 posições):
           [pr_0, hr_x_0, hr_j_0, pr_1, hr_x_1, hr_j_1, ..., pr_6, hr_x_6, hr_j_6]
         """
-        # --- Objetivos F ---
-        # profit_fn devolve (f1=-lucro, f2=staff, f3=penalização_ignorada)
+        # profit_fn devolve (f1=-lucro, f2=staff_total, f3=eficiência_ignorada)
         f1, f2, _ = self.profit_fn(
             decision_vars=x,
             store=self.store,
@@ -234,14 +215,6 @@ class TiaposeOptimization(ElementwiseProblem):
             forecast_is_weekend=self.forecast_is_weekend,
         )
         out["F"] = [f1, f2]
-
-        # --- Restrições de desigualdade G ---
-        # Extrair staff diário vectorizado (round() como salvaguarda pós-mutação).
-        staff_per_day = np.round(x[INT_IDX]).reshape(N_DAYS, 2).sum(axis=1)  # (7,)
-        # G[d] ≤ 0 → viável; G[d] > 0 → violação (pymoo usa constraint-dominance)
-        g_weekday = (staff_per_day[self._weekday_idx] - 8).tolist()   # cap 8
-        g_weekend  = (staff_per_day[self._weekend_idx] - 12).tolist() # cap 12
-        out["G"] = g_weekday + g_weekend
 
 
 # ===========================================================================

@@ -28,8 +28,6 @@ from utils.profit_logic import (
     calculate_daily_metrics,
     calculate_weekly_profit,
     STORE_PARAMS,
-    ELASTICITY_K,
-    PROFIT_SCALE,
 )
 
 logging.basicConfig(
@@ -71,7 +69,7 @@ N_VARS_TOTAL = N_STORES * N_VARS_PER_STORE  # 84
 UNIT_CAP = 10_000  # Teto de unidades de venda
 PENALTY_COEFF = 50  # Coeficiente de penalizacao por unidade excedente
 
-OUT_DIR = "results/03_Optimization/allocation"
+OUT_DIR = "results_v2/03_Optimization/allocation"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -105,10 +103,8 @@ def evaluate_store(store, decision_vars_21, forecast_customers, forecast_is_week
         hr_x_clean = max(0, int(round(hr_x_raw)))
         hr_j_clean = max(0, int(round(hr_j_raw)))
 
-        # Elasticidade da procura
-        effective_customers = int(round(
-            forecast_customers[i] * (1 + ELASTICITY_K * pr_clean)
-        ))
+        # Clientes previstos sem elasticidade — conforme enunciado
+        effective_customers = int(round(forecast_customers[i]))
 
         # Calcular metricas diarias (unidades, vendas, custos)
         metrics = calculate_daily_metrics(
@@ -190,7 +186,7 @@ def objective_with_penalty(full_solution):
     # Penalizacao: quanto mais se excede o teto, maior a penalizacao
     if total_units > UNIT_CAP:
         excess = total_units - UNIT_CAP
-        penalty = excess * PENALTY_COEFF * PROFIT_SCALE
+        penalty = excess * PENALTY_COEFF
     else:
         penalty = 0.0
 

@@ -45,7 +45,7 @@ logging.basicConfig(
 log = logging.getLogger("TIAPOSE.JointOpt")
 
 DATA_PATH = "data/processed/all_stores_processed.csv"
-OUT_DIR   = "results/03_Optimization/joint_o3"
+OUT_DIR   = "results_v2/03_Optimization/joint_o3"
 
 # Número máximo de gerações — aumentar para mais qualidade (mais lento)
 N_MAX_GEN = 300

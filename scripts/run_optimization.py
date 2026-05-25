@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
+
+# Force UTF-8 on Windows to handle box-drawing and accented characters
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import matplotlib.pyplot as plt
 
 sys.dont_write_bytecode = True
@@ -52,7 +56,7 @@ FORECAST_INPUTS = {
 
 DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 STORES = list(FORECAST_INPUTS.keys())
-OUT_DIR = "results/03_Optimization/multiobjective"
+OUT_DIR = "results_v2/03_Optimization/multiobjective"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
