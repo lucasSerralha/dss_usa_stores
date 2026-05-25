@@ -5,91 +5,92 @@
 
 ## 1. Contexto e Objetivos Estratégicos
 
-O projeto **DSS USA Stores** surge da necessidade de modernizar a gestão operacional de uma rede de retalho composta por quatro unidades geográficas distintas: **Baltimore, Lancaster, Philadelphia e Richmond**. O mercado retalhista atual caracteriza-se por uma volatilidade elevada, onde padrões históricos isolados já não garantem previsões fiáveis.
+O projeto **DSS USA Stores** surge da necessidade de modernizar a gestão operacional de uma rede de retalho composta por quatro unidades geográficas distintas: **Baltimore, Lancaster, Philadelphia e Richmond**.
+
+![DSS USA Stores Network Map](network_map.png)
 
 ### Desafios de Negócio:
-*   **Volatilidade da Procura:** Flutuações diárias influenciadas por promoções agressivas e eventos sazonais.
-*   **Gestão de Recursos Humanos:** Equilíbrio entre a qualidade de serviço (Staff Experto) e a eficiência de custos (Staff Júnior).
-*   **Gargalos Logísticos:** Restrições físicas de transporte que limitam o volume total de vendas da rede a 10.000 unidades por semana.
-
-### Objetivos Técnicos:
-1.  **Sistemas Preditivos de Alta Fidelidade:** Implementar uma arquitetura de *Ensemble* capaz de superar as baselines estatísticas em pelo menos 30%.
-2.  **Otimização Hierárquica:** Resolver o problema de alocação de recursos em três níveis: tático por loja (O1), logístico de rede (O2) e estratégico multiobjetivo (O3).
+*   **Volatilidade da Procura:** Flutuações diárias baseadas em *Num_Customers* (alvo) e variáveis exógenas (*TouristEvent*, *Date*).
+*   **Gestão de Recursos Humanos:** Diferenciação entre staff **Junior (J)** e **Expert (X)**.
+*   **Gargalos Logísticos:** Restrição física de **10.000 unidades vendidas** por semana para toda a rede (Objetivo O2).
 
 ---
 
 ## 2. Abordagem Metodológica Detalhada
 
-A metodologia foi estruturada para garantir a robustez científica de ponta a ponta:
+### A. Lógica de Previsão (Forecasting)
+O pipeline compara modelos univariados e multivariados contra a baseline **Seasonal Naive** (repetição da semana anterior).
+*   **Modelos Testados:** VAR, ARIMAX e Machine Learning Multivariado.
+*   **Métricas de Qualidade:** NMAE, RMSE, R² e MAE.
+*   **Validação:** Estratégias de *Rolling Window* e *Growing Window* com >10 iterações para garantir robustez.
 
-### A. Engenharia de Atributos (Feature Engineering)
-*   **Decomposição Temporal:** Extração de componentes de tendência, sazonalidade semanal e anual através de modelos aditivos.
-*   **Enriquecimento de Contexto:** Criação de variáveis binárias para feriados federais, eventos desportivos locais e campanhas de marketing.
-*   **Dinâmicas de Vendas:** Introdução de *Lags* (t-1 a t-7) para capturar a autocorrelação serial e janelas deslizantes (*Rolling Means*) para suavização de ruído.
+### B. Modelação Matemática (Profit Logic)
+A base do DSS é o motor de cálculo que traduz recursos em lucro, conforme definido no guia técnico:
 
-### B. Previsão Híbrida e Arquitetura de Cenários
-*   **Framework de Experimentação:** Os modelos foram testados em três regimes de informação:
-    *   **A (Base):** Apenas componentes temporais.
-    *   **B (Dynamics):** Inclusão de comportamentos recentes de vendas.
-    *   **C (Expert):** Contexto total de mercado (O cenário com melhor performance).
-*   **Meta-Modelagem (Ensemble):** Combinação linear ponderada dos Top-3 modelos (ex: LightGBM + Prophet + SARIMAX), onde os pesos são inversamente proporcionais ao erro de validação.
+1.  **Capacidade de Atendimento ($A_{s,d}$):**
+    $$A_{s,d} = \min(7 \cdot X_{s,d} + 6 \cdot J_{s,d}; C_{s,d})$$
+    *Onde $C_{s,d}$ é a previsão de clientes.*
 
-### C. Modelação da Função de Avaliação (Profit Logic)
-*   **Elasticidade-Preço:** Implementação de uma função de resposta de vendas baseada no desconto aplicado (0-30%).
-*   **Modelo de Staffing:** Diferenciação de produtividade entre Expert (maior conversão) e Júnior (menor custo).
-*   **Penalização de Restrições:** Uso de funções de penalidade (*Death Penalty*) para invalidar soluções que excedam a capacidade logística de rede.
+2.  **Unidades Vendidas por Cliente ($U_{s,d,c}$):**
+    $$U_{s,d,c} = \text{round}\left(\frac{F \cdot 10}{\ln(2 - PR_{s,d})}\right)$$
+    *F é o fator de ajuda da loja ($F_J$ ou $F_X$).*
 
----
+3.  **Lucro da Unidade Vendida ($P_{s,d,c}$):**
+    $$P_{s,d,c} = \text{round}(U_{s,d,c} \cdot (1 - PR_{s,d}) \cdot 1.07)$$
 
-## 3. Experiências Computacionais e Validação
+4.  **Lucro Semanal ($R_s$):**
+    $$R_s = \sum_{d=1}^{7} (R_{s,d}) - W_s$$
+    *$W_s$ representa os custos fixos semanais da loja.*
 
-Para assegurar a aplicabilidade real, as experiências foram desenhadas com rigor estatístico:
-
-### Protocolo de Validação de Previsão:
-*   **TimeSeriesSplit:** Uso de 5 *folds* temporais, garantindo que o modelo nunca treina com dados do futuro.
-*   **Métricas Multidimensionais:** Avaliação via **RMSE** (para penalizar grandes erros), **MAPE** (para interpretabilidade percentual) e **NMAE** (para comparação entre lojas de diferentes escalas).
-
-### Configuração dos Algoritmos de Otimização:
-*   **Hill Climbing (O1/O2):** Implementação de um motor de busca local com perturbações estocásticas. A utilização de 10 *random restarts* permitiu mapear diferentes bacias de atração, garantindo a convergência para o ótimo global.
-*   **U-NSGA-III (O3):** Utilização de uma população diversificada e mecanismos de preservação de elite baseados em nichos de referência. Esta abordagem permitiu gerar uma Fronteira de Pareto com densidade uniforme em todo o espaço de objetivos.
+![DSS USA Stores Profit Flow Infographic](profit_infographic.png)
 
 ---
 
-## 4. Resultados Obtidos: Análise Profunda
+## 3. Especificações Técnicas por Loja
 
-### Resultados de Previsão (Fidelity Analysis):
-*   **Ganhos vs. Naive:** O sistema reduziu o erro RMSE em média **47%** em relação ao modelo *Seasonal Naive*.
-*   **Impacto do Contexto:** A transição do Cenário A para o Cenário C resultou numa melhoria de precisão de **15-20%**, validando a hipótese de que o contexto promocional é o driver principal de vendas.
+| Loja | $F_J$ | $F_X$ | $W_s$ (Custo Fixo) |
+| :--- | :--- | :--- | :--- |
+| **Baltimore** | 1.00 | 1.15 | $700 |
+| **Lancaster** | 1.05 | 1.20 | $730 |
+| **Philadelphia** | 1.10 | 1.15 | $760 |
+| **Richmond** | 1.15 | 1.25 | $800 |
 
-### Resultados de Otimização:
-*   **Superioridade Algorítmica (O1):** O Hill Climbing superou o NSGA-II em termos de lucro máximo em **85%** nas instâncias de Baltimore e Richmond, devido ao seu foco exclusivo num único objetivo.
-*   **Otimização de Rede (O2):** A abordagem de *Knapsack* provou ser superior na distribuição de "cotas de venda", aumentando o lucro total da rede em **$10,675/semana** comparado a heurísticas de alocação fixa.
-*   **Trade-off Estratégico (O3):** A Fronteira de Pareto revelou que, para a unidade de Philadelphia, cada redução de 1 funcionário experto acarreta uma perda média de **$1,200** em vendas não realizadas por falta de conversão.
-
----
-
-## 5. Demonstração e Funcionalidades do Sistema
-
-A solução Streamlit foi desenhada para perfis de utilizador distintos (Analistas vs. Gestores):
-
-### Auditoria Científica (Analyst View):
-*   **Análise de Resíduos:** Gráficos de dispersão e histogramas para verificar a normalidade do erro e a ausência de viés sistemático.
-*   **XAI (Explainable AI):** Uso de *Feature Importance* para identificar quais as variáveis (ex: Desconto de FDS, Proximidade de Feriado) que mais influenciam cada previsão.
-
-### Centro de Operações Táticas (Manager View):
-*   **Simulador "What-if":** Alteração dinâmica de parâmetros (ex: aumentar o limite de rede para 12.000) com visualização instantânea do impacto no lucro.
-*   **Escalarização Dinâmica (w):** Slider que permite ao gestor definir o seu perfil de risco/custo. Ao ajustar o peso $w$, o sistema seleciona automaticamente o plano operacional na fronteira de Pareto que maximiza a utilidade para esse gestor específico.
+*   **Custos de RH:** 
+    *   Junior: $60 (dia útil) / $70 (fim de semana). Capacidade: 6 clientes.
+    *   Expert: $80 (dia útil) / $95 (fim de semana). Capacidade: 7 clientes.
 
 ---
 
-## 6. Conclusões e Recomendações Futuras
+## 4. Experiências Computacionais: Otimização
 
-O **DSS USA Stores** representa o estado da arte na aplicação de meta-heurísticas ao retalho:
+O espaço de busca compreende um vetor numérico de **84 parâmetros** (4 lojas $\times$ 7 dias $\times$ 3 variáveis: $J, X, PR$).
 
-1.  **Robustez Preditiva:** O uso de *Ensembles* adaptativos por loja mitiga o risco de falha de modelos individuais em mercados específicos.
-2.  **Vantagem Competitiva:** A capacidade de otimizar preços e staff simultaneamente gera uma sinergia que maximiza a margem operacional além dos métodos tradicionais de gestão.
-3.  **Transparência Decisória:** Ao expor a Fronteira de Pareto, o sistema deixa de ser uma "caixa-preta" e passa a ser uma ferramenta de suporte à negociação entre os departamentos de Vendas e Recursos Humanos.
-4.  **Escalabilidade:** A arquitetura modular permite a inclusão de novas lojas ou novas restrições (ex: limites de staff por sindicato) com alterações mínimas no núcleo algorítmico.
+### Algoritmos e Métodos:
+*   **Busca:** Hill Climbing, Simulated Annealing (SANN) e Algoritmos Genéticos.
+*   **Análise de Convergência:** Monitorização da qualidade das iterações para evitar estagnação precoce.
+*   **O1 (Local):** Maximização de lucro individual.
+*   **O2 (Rede):** Maximização global com **Hard Constraint** de 10.000 unidades via **Death Penalty**.
+*   **O3 (Multi):** Maximização de lucro vs. Minimização de staff via **Fronteira de Pareto**.
+
+![DSS USA Stores Pareto Frontier](pareto_frontier.png)
 
 ---
-**Projeto:** DSS USA Stores | **Data:** Maio 2026 | **Status:** Concluído para Deploy
+
+## 5. Demonstração do Sistema (DSS)
+
+O sistema consolidado permite:
+1.  **Seleção da Semana:** O utilizador escolhe a semana alvo para planeamento.
+2.  **Visualização de Previsões:** Exibição de valores previstos e reais (quando disponíveis).
+3.  **Plano Otimizado:** Relatório detalhado por dia contendo o número de clientes, unidades vendidas, vendas, custos e lucro total.
+
+---
+
+## 6. Conclusões
+
+O projeto **DSS USA Stores** demonstra que a aplicação de métodos inteligentes de análise de dados resulta em:
+1.  **Precisão Preditiva:** Redução significativa do erro em comparação com métodos ingénuos (*Seasonal Naive*).
+2.  **Otimização de Lucro:** Identificação de combinações ideais de desconto e staff que seriam impossíveis de encontrar manualmente.
+3.  **Suporte à Decisão:** Uma interface clara que permite aos gestores escolher entre diferentes perfis estratégicos na Fronteira de Pareto.
+
+---
+**Projeto:** DSS USA Stores | **Data:** Maio 2026 | **Status:** Concluído para Apresentação
