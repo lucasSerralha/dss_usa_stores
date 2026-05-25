@@ -1,14 +1,14 @@
 """
-O1 + O2: Otimização Monobjetivo
-Página 02 — DSS USA Stores
+O1 + O2: Otimizacao Monobjetivo
+Pagina 03 — DSS USA Stores
 
-O1 — Maximização de lucro individual por loja (Hill Climbing, 10 restarts × 2 000 iter)
-O2 — Alocação conjunta com restrição logística de 10 000 unidades/semana
-       Algoritmo único: Hill Climbing com Death Penalty (heurística monobjetivo)
+O1 — Maximizacao de lucro individual por loja (Hill Climbing, 10 restarts x 2 000 iter)
+O2 — Alocacao sob limite logistico de rede de 10 000 unidades (Heuristica com Death Penalty)
 """
 import streamlit as st
 import sys
 import os
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -553,59 +553,101 @@ else:
         "Execute: python scripts/run_allocation_optimization.py"
     )
 
-# ── Convergencia O2: reducao de unidades via Death Penalty ────────────────────
+# ── Convergencia O2 com zona proibida ─────────────────────────────────────────
 if df_alloc_conv is not None:
     st.markdown("---")
     st.markdown(
-        '<div class="section-label">Convergencia O2 — Reducao de Unidades via Death Penalty</div>',
+        '<div class="section-label">Convergencia O2 — Death Penalty em Acao</div>',
         unsafe_allow_html=True,
     )
-    st.caption(
-        "A curva de unidades mostra como o algoritmo aprende progressivamente a "
-        "respeitar a restricao logistica de 10 000 unidades. A linha tracejada marca o limite."
+    st.markdown(
+        '<div class="section-desc" style="margin-bottom:12px;">'
+        'A curva inicia-se na <b>zona proibida</b> (a vermelho — acima de 10 000 unidades), '
+        'onde a Death Penalty penaliza cada solucao inviavel proporcionalmente ao excesso. '
+        'O algoritmo navega progressivamente para a <b>zona de viabilidade</b> (abaixo da '
+        'linha tracejada), convergindo para o maximo de lucro que respeita a restricao.'
+        '</div>',
+        unsafe_allow_html=True,
     )
 
     df_conv_o2 = df_alloc_conv[df_alloc_conv["iteration"] % 30 == 0].copy()
 
+    x_vals = df_conv_o2["iteration"].tolist()
+    y_vals = df_conv_o2["units"].tolist()
+    y_max  = max(y_vals) * 1.05
+
+    # Separar segmentos: inviavel (vermelho) vs viavel (azul)
+    y_inviavel = [y if y > LIMIT else None for y in y_vals]
+    y_viavel   = [y if y <= LIMIT else None for y in y_vals]
+
     fig_conv2 = go.Figure()
 
+    # Zona proibida: fundo vermelho translucido acima do limite
     fig_conv2.add_trace(go.Scatter(
-        x=df_conv_o2["iteration"],
-        y=df_conv_o2["units"],
-        mode="lines",
-        name="Unidades Totais",
-        line=dict(color="#1E3A8A", width=2.5),
+        x=x_vals + x_vals[::-1],
+        y=[y_max] * len(x_vals) + [LIMIT] * len(x_vals),
+        fill="toself",
+        fillcolor="rgba(220,38,38,0.07)",
+        line=dict(width=0),
+        showlegend=True,
+        name="Zona Proibida (Death Penalty)",
+        hoverinfo="skip",
     ))
 
+    # Zona viavel: fundo azul translucido abaixo do limite
+    fig_conv2.add_trace(go.Scatter(
+        x=x_vals + x_vals[::-1],
+        y=[LIMIT] * len(x_vals) + [0] * len(x_vals),
+        fill="toself",
+        fillcolor="rgba(5,150,105,0.05)",
+        line=dict(width=0),
+        showlegend=True,
+        name="Zona Viavel",
+        hoverinfo="skip",
+    ))
+
+    # Curva principal
+    fig_conv2.add_trace(go.Scatter(
+        x=x_vals,
+        y=y_vals,
+        mode="lines",
+        name="Unidades Totais",
+        line=dict(color="#1E3A8A", width=2.8),
+    ))
+
+    # Linha do limite
     fig_conv2.add_hline(
         y=LIMIT,
         line_dash="dot",
         line_color="#DC2626",
-        line_width=1.5,
-        annotation_text="Limite: 10 000 un.",
+        line_width=2,
+        annotation_text="Limite logistico: 10 000 un.",
         annotation_position="top right",
         annotation_font=dict(color="#DC2626", size=10),
     )
 
+    # Ponto final (solucao final)
     fig_conv2.add_trace(go.Scatter(
-        x=df_conv_o2["iteration"],
-        y=df_conv_o2["units"].clip(lower=LIMIT),
-        fill="tonexty",
-        fillcolor="rgba(220,38,38,0.06)",
-        line=dict(width=0),
+        x=[x_vals[-1]],
+        y=[y_vals[-1]],
+        mode="markers+text",
+        marker=dict(color="#059669", size=12, symbol="circle"),
+        text=[f"  {y_vals[-1]:,} un."],
+        textposition="middle right",
+        textfont=dict(color="#059669", size=11),
+        name="Solucao Final",
         showlegend=False,
-        hoverinfo="skip",
     ))
 
     fig_conv2.update_layout(
-        height=300,
+        height=340,
         plot_bgcolor="#FFFFFF",
         paper_bgcolor="#FFFFFF",
-        margin=dict(t=20, b=40, l=10, r=40),
+        margin=dict(t=20, b=40, l=10, r=80),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
             xanchor="right", x=1,
-            font=dict(color="#0F172A", size=11),
+            font=dict(color="#0F172A", size=10),
         ),
         xaxis=dict(
             title=dict(text="Iteracao", font=dict(color="#0F172A", size=11)),
@@ -614,14 +656,54 @@ if df_alloc_conv is not None:
             zeroline=False,
         ),
         yaxis=dict(
-            title=dict(text="Unidades Totais", font=dict(color="#0F172A", size=11)),
+            title=dict(text="Unidades Totais na Rede", font=dict(color="#0F172A", size=11)),
             tickfont=dict(color="#0F172A", size=10),
             gridcolor="#F1F5F9",
             zeroline=False,
             tickformat=",d",
+            range=[0, y_max],
         ),
     )
     st.plotly_chart(fig_conv2, use_container_width=True)
+
+    # Card condicional Verde / Vermelho
+    final_units = int(df_alloc_conv["units"].iloc[-1])
+    restricao_ok = final_units <= LIMIT
+
+    if restricao_ok:
+        st.markdown(f"""
+        <div style="padding:20px 24px;border-radius:10px;border:2px solid #BBF7D0;
+             background:#F0FDF4;display:flex;align-items:center;gap:24px;">
+            <div style="font-size:2rem;color:#059669;font-weight:900;line-height:1;">OK</div>
+            <div>
+                <div style="font-size:0.70rem;font-weight:700;letter-spacing:0.09em;
+                     text-transform:uppercase;color:#059669;margin-bottom:4px;">
+                     Restricao Logistica Respeitada</div>
+                <div style="font-size:1.3rem;font-weight:800;color:#065F46;">
+                    {final_units:,} unidades &nbsp;&lt;&nbsp; 10 000</div>
+                <div style="font-size:0.82rem;color:#065F46;margin-top:4px;">
+                    A Death Penalty guiou o algoritmo para a zona de viabilidade.
+                    Margem de seguranca: <strong>{LIMIT - final_units:,} unidades</strong>.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div style="padding:20px 24px;border-radius:10px;border:2px solid #FECACA;
+             background:#FEF2F2;display:flex;align-items:center;gap:24px;">
+            <div style="font-size:2rem;color:#DC2626;font-weight:900;line-height:1;">!</div>
+            <div>
+                <div style="font-size:0.70rem;font-weight:700;letter-spacing:0.09em;
+                     text-transform:uppercase;color:#DC2626;margin-bottom:4px;">
+                     ATENCAO: Restricao Violada</div>
+                <div style="font-size:1.3rem;font-weight:800;color:#7F1D1D;">
+                    {final_units:,} unidades &nbsp;&gt;&nbsp; 10 000</div>
+                <div style="font-size:0.82rem;color:#7F1D1D;margin-top:4px;">
+                    Excesso de <strong>{final_units - LIMIT:,} unidades</strong>.
+                    Rever parametros de penalizacao.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("""
