@@ -76,19 +76,47 @@ CORES_LOJA = {
 # ── Carregamento de dados ──────────────────────────────────────────────────
 @st.cache_data
 def carregar_dados(data_dir: str) -> pd.DataFrame | None:
+    """
+    Normalizacao defensiva:
+      • Data → datetime (errors='coerce'); descarta NaT
+      • Loja → str.strip().str.title(); aceita codigos inteiros 0..3
+    """
     path = os.path.join(data_dir, "all_stores_processed.csv")
     if not os.path.exists(path):
         return None
-    df = pd.read_csv(path, parse_dates=["Date"])
-    store_map = {
-        "baltimore": "Baltimore", "lancaster": "Lancaster",
-        "philadelphia": "Philadelphia", "richmond": "Richmond",
-        0: "Baltimore", 1: "Lancaster", 2: "Philadelphia", 3: "Richmond",
-    }
-    if "store_id" in df.columns:
-        df["Loja"] = df["store_id"].map(store_map)
-    else:
+
+    df = pd.read_csv(path)
+
+    # Coluna de Data — aceita 'Date'/'date'/'DATE'
+    date_col = next((c for c in ("Date", "date", "DATE") if c in df.columns), None)
+    if date_col is None:
+        return None
+    if date_col != "Date":
+        df = df.rename(columns={date_col: "Date"})
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"]).copy()
+
+    # Coluna de Loja — aceita varias variantes; trata strings e ints
+    loja_col = next(
+        (c for c in ("Loja", "Store", "store", "STORE", "store_id", "Store_ID")
+         if c in df.columns),
+        None,
+    )
+    store_map_int = {0: "Baltimore", 1: "Lancaster",
+                     2: "Philadelphia", 3: "Richmond"}
+
+    if loja_col is None:
         df["Loja"] = "Desconhecida"
+    elif pd.api.types.is_numeric_dtype(df[loja_col]):
+        df["Loja"] = df[loja_col].map(store_map_int).fillna("Desconhecida")
+    else:
+        df["Loja"] = (
+            df[loja_col].astype(str)
+                        .str.strip()
+                        .str.replace(r"\s+", " ", regex=True)
+                        .str.title()
+        )
+
     return df
 
 df = carregar_dados(_data_dir)
@@ -119,7 +147,7 @@ intervalo_anos = st.sidebar.slider(
 )
 st.sidebar.markdown("---")
 st.sidebar.caption("Fonte: data/processed/all_stores_processed.csv")
-st.sidebar.caption("Periodo completo: 2012–2014")
+st.sidebar.caption("Periodo completo: 2012–2016")
 
 # ── Cabecalho da pagina ────────────────────────────────────────────────────
 st.markdown("""
@@ -145,15 +173,21 @@ if df is None:
     )
     st.stop()
 
-# Filtrar dados pelo periodo e lojas selecionadas
+# Filtrar dados pelo periodo (via .dt.year) e lojas selecionadas
 df_filt = df[
-    (df["Date"].dt.year >= intervalo_anos[0]) &
-    (df["Date"].dt.year <= intervalo_anos[1]) &
-    (df["Loja"].isin(lojas_sel))
+    df["Date"].dt.year.between(intervalo_anos[0], intervalo_anos[1]) &
+    df["Loja"].isin(lojas_sel)
 ].copy()
 
 if df_filt.empty:
     st.warning("Nenhum dado disponivel para os filtros selecionados.")
+    with st.expander("Debug — valores encontrados no CSV nao filtrado", expanded=True):
+        st.write("**Lojas (Loja):**", sorted(df["Loja"].dropna().unique().tolist()))
+        st.write("**Lojas selecionadas:**", lojas_sel)
+        st.write("**Anos no CSV:**",
+                 sorted(df["Date"].dt.year.dropna().unique().astype(int).tolist()))
+        st.write("**Intervalo selecionado:**", intervalo_anos)
+        st.write("**Total linhas no CSV:**", len(df))
     st.stop()
 
 # ══════════════════════════════════════════════════════════════════════════
