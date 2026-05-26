@@ -17,8 +17,14 @@ def clear_cache():
 def start_app():
     print("🚀 Iniciando aplicação Streamlit...")
     # Iniciamos o processo em background
+    #process = subprocess.Popen(
+    #    ["streamlit", "run", APP_PATH, "--server.headless", "true"],
+    #    stdout=subprocess.PIPE,
+    #    stderr=subprocess.PIPE,
+    #    preexec_fn=os.setsid
+    #)
     process = subprocess.Popen(
-        ["streamlit", "run", APP_PATH, "--server.headless", "true"],
+        ["streamlit", "run", APP_PATH],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         preexec_fn=os.setsid
