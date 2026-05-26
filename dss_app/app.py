@@ -16,6 +16,7 @@ st.set_page_config(
 st.markdown("""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
   html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif; }
   h1, h2, h3 { letter-spacing: -0.02em; }
   #MainMenu { visibility: hidden; }
