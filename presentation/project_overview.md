@@ -69,7 +69,7 @@ O espaço de busca compreende um vetor numérico de **84 parâmetros** (4 lojas 
 *   **Busca:** Hill Climbing, Simulated Annealing (SANN) e Algoritmos Genéticos.
 *   **Análise de Convergência:** Monitorização da qualidade das iterações para evitar estagnação precoce.
 *   **O1 (Local):** Maximização de lucro individual.
-*   **O2 (Rede):** Maximização global com **Hard Constraint** de 10.000 unidades via **Death Penalty**.
+*   **O2 (Rede):** Maximização global com **Hard Constraint** de 10.000 unidades via **Death Penalty** (penalização de soluções inviáveis) ou **Repair** (ajuste heurístico da solução).
 *   **O3 (Multi):** Maximização de lucro vs. Minimização de staff via **Fronteira de Pareto**.
 
 ![DSS USA Stores Pareto Frontier](pareto_frontier.png)
@@ -85,7 +85,18 @@ O sistema consolidado permite:
 
 ---
 
-## 6. Conclusões
+## 6. Entregas e Conformidade Académica
+
+Para garantir o cumprimento integral dos requisitos definidos no guia do projeto:
+
+*   **Relatório Técnico:** Documento detalhado (20-40 páginas) abrangendo desde a EDA até à análise de sensibilidade da otimização.
+*   **Vídeo de Demonstração:** Vídeo narrado de até 5 minutos (YouTube) demonstrando as funcionalidades do dashboard e a integração do pipeline.
+*   **Ética e IA:** Declaração explícita de todas as ferramentas de IA Generativa (ex: Gemini, ChatGPT) utilizadas no desenvolvimento do código e auxílio na documentação, garantindo transparência e integridade.
+*   **Avaliação de Equipa:** Inclusão de autoavaliação individual e descrição clara das contribuições de cada membro do grupo para o sucesso do projeto.
+
+---
+
+## 7. Conclusões
 
 O projeto **DSS USA Stores** demonstra que a aplicação de métodos inteligentes de análise de dados resulta em:
 1.  **Precisão Preditiva:** Redução significativa do erro em comparação com métodos ingénuos (*Seasonal Naive*).
