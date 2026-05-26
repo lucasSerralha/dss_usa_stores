@@ -122,13 +122,27 @@ def calcular_avg_discount(df: pd.DataFrame) -> np.ndarray:
 
 
 def selecionar_por_w(df: pd.DataFrame, w: float) -> int:
-    """Indice da solucao com melhor score escalar: w*lucro_norm + (1-w)*(-staff_norm)."""
-    lucro = df["lucro_total"].values.astype(float)
-    staff = df["staff_total"].values.astype(float)
+    """Indice posicional da solucao com melhor score escalar.
+
+    Restringe a busca a solucoes lucrativas (lucro_total > 0) antes
+    de aplicar a escalarizacao, evitando que perfis conservadores
+    (w baixo) selecionem planos nao-viaveis apenas por terem staff minimo.
+    Se nenhuma solucao for lucrativa, usa todas como fallback.
+    """
+    # 1. Filtrar apenas solucoes economicamente viaveis
+    df_viable = df[df["lucro_total"] > 0]
+    if df_viable.empty:
+        df_viable = df  # fallback: sem solucoes lucrativas, usa tudo
+
+    lucro = df_viable["lucro_total"].values.astype(float)
+    staff = df_viable["staff_total"].values.astype(float)
     lucro_n = (lucro - lucro.min()) / (lucro.max() - lucro.min() + 1e-9)
     staff_n = (staff - staff.min()) / (staff.max() - staff.min() + 1e-9)
     scores  = w * lucro_n + (1 - w) * (1 - staff_n)
-    return int(np.argmax(scores))
+
+    # 2. Retornar o indice posicional no df original (index == posicao para CSV padrao)
+    best_in_viable = int(np.argmax(scores))
+    return int(df_viable.index[best_in_viable])
 
 
 # ── Barra Lateral ──────────────────────────────────────────────────────────
@@ -282,21 +296,48 @@ lucros  = df_pareto["lucro_total"].values.astype(float)
 staffs  = df_pareto["staff_total"].values.astype(float)
 descs   = df_pareto["avg_discount_pct"].values
 
+# Detectar convergencia prematura (MOEA/D pode colapsar para poucos pontos)
+n_unique_points = df_pareto.groupby(["staff_total", "lucro_total"]).ngroups
+convergencia_colapsada = n_unique_points < max(5, len(df_pareto) * 0.1)
+
+# Deduplificar para visualizacao (sem duplicados sobrepostos)
+df_plot = (
+    df_pareto.groupby(["staff_total", "lucro_total"], as_index=False)
+    .agg(avg_discount_pct=("avg_discount_pct", "mean"), count=("lucro_total", "size"))
+)
+df_plot_sorted = df_plot.sort_values("staff_total")
+
+plot_staffs = df_plot_sorted["staff_total"].values.astype(float)
+plot_lucros  = df_plot_sorted["lucro_total"].values.astype(float)
+plot_descs   = df_plot_sorted["avg_discount_pct"].values
+plot_counts  = df_plot_sorted["count"].values
+
 # ── Metricas de contexto ───────────────────────────────────────────────────
 m1, m2, m3, m4 = st.columns(4, gap="medium")
 
 with m1:
     st.metric("Solucoes na Fronteira", len(df_pareto),
-              help=f"Solucoes nao dominadas — {algoritmo}")
+              help=f"Solucoes nao dominadas — {algoritmo} ({n_unique_points} pontos distintos)")
 with m2:
     st.metric("Lucro Maximo", f"${lucros.max():,.0f}",
               help="Solucao com maior lucro total na fronteira")
 with m3:
-    st.metric("Staff Minimo", int(staffs.min()),
-              help="Solucao com menor staff total na fronteira")
+    n_lucrative = int((lucros > 0).sum())
+    st.metric("Solucoes Lucrativas", f"{n_lucrative} / {len(df_pareto)}",
+              help="Solucoes com lucro_total > 0. A escalarizacao restringe-se a estas.")
 with m4:
     st.metric("Lucro Selecionado (w)", f"${lucros[idx_sel]:,.0f}",
-              help=f"Ponto da fronteira com w={w:.2f}")
+              help=f"Ponto da fronteira com w={w:.2f} — restrito a solucoes lucrativas")
+
+# Alerta de convergencia prematura
+if convergencia_colapsada:
+    st.warning(
+        f"**{algoritmo} convergiu para {n_unique_points} pontos distintos** "
+        f"(de {len(df_pareto)} solucoes). O algoritmo colocou {len(df_pareto) - n_unique_points} "
+        f"solucoes no mesmo ponto — sinal de convergencia prematura na decomposicao de pesos. "
+        f"A fronteira e exibida com os {n_unique_points} pontos unicos.",
+        icon="⚠️",
+    )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -306,29 +347,41 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">Fronteira de Pareto 2D — Trade-off Lucro vs. Staff</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="section-desc">'
-    'Cada ponto representa uma solucao nao dominada. A cor codifica a percentagem media de '
-    'desconto aplicada. Mover o slider <b>w</b> na barra lateral desloca a estrela dourada '
-    'para o ponto estrategico otimo segundo o perfil selecionado.'
+    'Cada ponto e uma solucao nao dominada (pontos sobrepostos deduplificados). '
+    'A <b>linha azul</b> conecta os pontos ordenados por staff — e a fronteira. '
+    'A <b>linha tracejada vermelha</b> marca o break-even (lucro = $0). '
+    'A <b>estrela dourada</b> e o plano recomendado para o valor de w selecionado.'
     '</div>',
     unsafe_allow_html=True,
 )
 
 fig_pareto = go.Figure()
 
-# Todos os pontos da fronteira (heatmap de desconto)
+# Linha da fronteira (conecta pontos ordenados por staff)
 fig_pareto.add_trace(go.Scatter(
-    x=staffs,
-    y=lucros,
+    x=plot_staffs,
+    y=plot_lucros,
+    mode="lines",
+    name="Fronteira Pareto",
+    line=dict(color="#93C5FD", width=2, dash="solid"),
+    hoverinfo="skip",
+))
+
+# Pontos da fronteira (tamanho proporcional ao nr de solucoes sobrepostas)
+marker_sizes = np.clip(8 + np.log1p(plot_counts) * 4, 8, 24).tolist()
+fig_pareto.add_trace(go.Scatter(
+    x=plot_staffs,
+    y=plot_lucros,
     mode="markers",
     name="Solucoes Pareto",
     marker=dict(
-        color=descs,
+        color=plot_descs,
         colorscale=[
             [0.0, "#EFF6FF"],
             [0.5, "#3B82F6"],
             [1.0, "#1E3A8A"],
         ],
-        size=10,
+        size=marker_sizes,
         colorbar=dict(
             title=dict(text="Desconto Medio (%)", font=dict(color="#0F172A", size=11)),
             tickfont=dict(color="#0F172A", size=10),
@@ -337,12 +390,25 @@ fig_pareto.add_trace(go.Scatter(
         line=dict(color="#FFFFFF", width=1),
         showscale=True,
     ),
+    customdata=plot_counts,
     hovertemplate=(
         "Staff Total: %{x}<br>"
         "Lucro Total: $%{y:,.0f}<br>"
-        "Desconto Medio: %{marker.color:.1f}%"
+        "Desconto Medio: %{marker.color:.1f}%<br>"
+        "Solucoes neste ponto: %{customdata}"
         "<extra></extra>"
     ),
+))
+
+# Linha de break-even (lucro = 0)
+x_range = [float(plot_staffs.min()) - 1, float(plot_staffs.max()) + 1]
+fig_pareto.add_trace(go.Scatter(
+    x=x_range,
+    y=[0, 0],
+    mode="lines",
+    name="Break-even ($0)",
+    line=dict(color="#DC2626", width=1.5, dash="dash"),
+    hoverinfo="skip",
 ))
 
 # Estrela dourada no ponto selecionado
@@ -363,7 +429,7 @@ fig_pareto.add_trace(go.Scatter(
 ))
 
 fig_pareto.update_layout(
-    height=480,
+    height=500,
     plot_bgcolor="#FFFFFF",
     paper_bgcolor="#FFFFFF",
     margin=dict(t=20, b=50, l=10, r=120),
@@ -400,13 +466,28 @@ with col_plan:
     staff_sel = int(sol["staff_total"])
     desc_sel  = float(sol["avg_discount_pct"])
 
+    is_profitable = lucro_sel > 0
+    plan_border   = "#059669" if is_profitable else "#DC2626"
+    plan_bg       = "#F0FDF4" if is_profitable else "#FFF1F2"
+    badge_color   = "#059669" if is_profitable else "#DC2626"
+    badge_text    = "✓ Lucrativo" if is_profitable else "⚠ Deficit"
+    lucro_color   = "#059669" if is_profitable else "#DC2626"
+
     st.markdown(f"""
-    <div class="selected-plan">
-        <div class="selected-plan-title">Plano Otimo para w = {w:.2f} — {perfil_label}</div>
+    <div class="selected-plan" style="border-color:{plan_border};background:{plan_bg};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="selected-plan-title" style="margin-bottom:0;">
+                Plano Otimo para w = {w:.2f} — {perfil_label}
+            </div>
+            <span style="padding:3px 10px;border-radius:12px;font-size:0.72rem;
+                  font-weight:700;background:{badge_color}20;color:{badge_color};">
+                {badge_text}
+            </span>
+        </div>
         <table style="width:100%;font-size:0.88rem;border-collapse:collapse;">
             <tr>
                 <td style="color:#64748B;padding:5px 0;">Lucro Total Semanal</td>
-                <td style="font-weight:700;color:#0F172A;text-align:right;">
+                <td style="font-weight:700;color:{lucro_color};text-align:right;">
                     ${lucro_sel:,.0f}
                 </td>
             </tr>
@@ -433,14 +514,21 @@ with col_plan:
     """, unsafe_allow_html=True)
 
 with col_context:
-    # Comparar com extremos da fronteira
-    idx_max_lucro = int(np.argmax(lucros))
-    idx_min_staff = int(np.argmin(staffs))
+    # Extremos da fronteira — restritos a solucoes lucrativas para comparacoes validas
+    df_viable_ctx = df_pareto[df_pareto["lucro_total"] > 0]
+    if df_viable_ctx.empty:
+        df_viable_ctx = df_pareto  # fallback
 
-    lucro_agressivo = lucros[idx_max_lucro]
-    staff_agressivo = staffs[idx_max_lucro]
-    lucro_conserv   = lucros[idx_min_staff]
-    staff_conserv   = staffs[idx_min_staff]
+    lucros_v  = df_viable_ctx["lucro_total"].values.astype(float)
+    staffs_v  = df_viable_ctx["staff_total"].values.astype(float)
+
+    idx_max_lucro = int(np.argmax(lucros_v))
+    idx_min_staff = int(np.argmin(staffs_v))
+
+    lucro_agressivo = lucros_v[idx_max_lucro]
+    staff_agressivo = staffs_v[idx_max_lucro]
+    lucro_conserv   = lucros_v[idx_min_staff]
+    staff_conserv   = staffs_v[idx_min_staff]
 
     custo_extra_staff  = staff_sel - staff_conserv
     ganho_extra_lucro  = lucro_sel - lucro_conserv
