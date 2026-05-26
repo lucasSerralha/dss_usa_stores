@@ -80,7 +80,11 @@ def carregar_dados(data_dir: str) -> pd.DataFrame | None:
     if not os.path.exists(path):
         return None
     df = pd.read_csv(path, parse_dates=["Date"])
-    store_map = {0: "Baltimore", 1: "Lancaster", 2: "Philadelphia", 3: "Richmond"}
+    store_map = {
+        "baltimore": "Baltimore", "lancaster": "Lancaster",
+        "philadelphia": "Philadelphia", "richmond": "Richmond",
+        0: "Baltimore", 1: "Lancaster", 2: "Philadelphia", 3: "Richmond",
+    }
     if "store_id" in df.columns:
         df["Loja"] = df["store_id"].map(store_map)
     else:
@@ -115,7 +119,7 @@ intervalo_anos = st.sidebar.slider(
 )
 st.sidebar.markdown("---")
 st.sidebar.caption("Fonte: data/processed/all_stores_processed.csv")
-st.sidebar.caption("Periodo completo: 2012–2016")
+st.sidebar.caption("Periodo completo: 2012–2014")
 
 # ── Cabecalho da pagina ────────────────────────────────────────────────────
 st.markdown("""

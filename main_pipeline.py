@@ -50,7 +50,7 @@ def main():
     print("="*60)
     
     # 0. CONFIGURAÇÃO DA ESTRUTURA DE DIRETÓRIOS (Arquitetura de Resultados)
-    results_base = 'results_v2'  # v2: target correto = Num_Customers (enunciado)
+    results_base = 'results'  # directorio lido pela DSS App
     subdirs = ['00_Master_Summary', '01_EDA', '02_Forecasting']
     for sd in subdirs:
         os.makedirs(os.path.join(results_base, sd), exist_ok=True)
@@ -72,7 +72,7 @@ def main():
     # NOTA: 'Num_Employees' banido por causalidade.
     #        'Num_Customers' é agora o TARGET — usar apenas lags (sem leakage circular).
     feature_sets = {
-        # Cenário A: apenas sinais temporais + lags de clientes
+        # Cenário A: apenas sinais temporais + lags de clientes (calendário puro)
         "A_Temporal_Base": [
             'day_of_week', 'IsWeekend', 'month', 'season_num',
             'customers_lag_7', 'customers_lag_28'
@@ -83,11 +83,26 @@ def main():
             'customers_lag_1', 'customers_lag_7',
             'sales_lag_7', 'sales_roll_mean_7'
         ],
-        # Cenário C: contexto completo (sem Num_Customers contemporâneo — seria leakage)
+        # Cenário C: contexto de negócio (promoções + eventos + calendário + lags-chave)
         "C_Context_Expert": [
             'customers_lag_7', 'Pct_On_Sale', 'TouristEvent',
             'is_holiday', 'days_to_next_holiday', 'day_of_week',
             'sales_lag_7', 'sales_roll_mean_7'
+        ],
+        # Cenário D: contexto completo — todas as features disponíveis sem leakage
+        # Inclui: calendário completo + promoções + eventos + todos os lags
+        # + estatísticas móveis (18 features, referência máxima de comparação)
+        "D_Full_Context": [
+            # Calendário completo
+            'day_of_week', 'IsWeekend', 'month', 'season_num',
+            # Contexto externo
+            'is_holiday', 'days_to_next_holiday', 'TouristEvent', 'Pct_On_Sale',
+            # Lags de clientes (curto, médio e longo prazo)
+            'customers_lag_7', 'customers_lag_14', 'customers_lag_21', 'customers_lag_28',
+            # Lags de vendas (curto, médio e longo prazo)
+            'sales_lag_7', 'sales_lag_14', 'sales_lag_21', 'sales_lag_28',
+            # Estatísticas móveis de vendas
+            'sales_roll_mean_7', 'sales_roll_std_7'
         ]
     }
 
