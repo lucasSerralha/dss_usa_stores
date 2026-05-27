@@ -18,9 +18,7 @@ st.markdown("""
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif; }
   h1, h2, h3 { letter-spacing: -0.02em; }
-  #MainMenu { visibility: hidden; }
   footer { visibility: hidden; }
-  [data-testid="stToolbar"] { visibility: hidden; }
   [data-testid="collapsedControl"] { visibility: visible !important; }
 
   [data-testid="stSidebar"] { background: #0F172A; }
