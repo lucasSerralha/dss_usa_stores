@@ -1,8 +1,8 @@
 day,day_label,pr,hr_x,hr_j,total_staff,customers,is_weekend
-0,Dom,0.0071,5,10,15,97,True
-1,Seg,0.2594,11,4,15,61,False
-2,Ter,0.2293,6,10,16,65,False
-3,Qua,0.1391,11,3,14,71,False
-4,Qui,0.2488,3,14,17,65,False
-5,Sex,0.2301,8,14,22,89,False
-6,Sáb,0.1008,13,11,24,125,True
+0,Dom,0.011,8,7,15,97,True
+1,Seg,0.0,8,1,9,61,False
+2,Ter,0.0939,4,6,10,65,False
+3,Qua,0.0115,5,6,11,71,False
+4,Qui,0.0,7,3,10,65,False
+5,Sex,0.008,4,10,14,89,False
+6,Sáb,0.0077,10,9,19,125,True
