@@ -16,6 +16,7 @@ st.set_page_config(
 st.markdown("""
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
   html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif; }
   h1, h2, h3 { letter-spacing: -0.02em; }
   footer { visibility: hidden; }
@@ -112,7 +113,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 st.sidebar.caption("01 — Analise Exploratoria")
-st.sidebar.caption("02 — Previsao de Vendas")
+st.sidebar.caption("02 — Previsao de Clientes")
 st.sidebar.caption("03 — Otimizacao Monobjetivo (O1/O2)")
 st.sidebar.caption("04 — Otimizacao Multiobjetivo (O3)")
 
@@ -136,13 +137,13 @@ with col1:
     st.markdown("""
     <div class="pillar-card">
         <div class="pillar-number">1</div>
-        <div class="pillar-title">Previsao de Vendas</div>
+        <div class="pillar-title">Previsao de Clientes</div>
         <div class="pillar-desc">
             Arquitetura hibrida adaptada ao perfil de volatilidade de cada mercado.
-            Tres cenarios de experimentacao (Base Temporal, Dinamica de Vendas,
-            Contexto Especialista) alimentam um motor de ensemble que seleciona
-            automaticamente os tres modelos de melhor desempenho por loja.<br><br>
-            O pipeline atinge cerca de 90% de precisao preditiva (1 &minus; MAPE),
+            Quatro cenarios de experimentacao (Base Temporal, Dinamica de Vendas,
+            Contexto Especialista, Contexto Completo) alimentam um motor de ensemble
+            que seleciona automaticamente os tres modelos de melhor desempenho por loja.<br><br>
+            O pipeline atinge cerca de 85% de precisao preditiva (1 &minus; MAPE),
             complementado por modelos de chegada de Poisson para estimativa
             probabilistica do fluxo de clientes.
         </div>
@@ -200,7 +201,7 @@ st.markdown("""
 st.markdown("""
 <div class="nav-hint">
     Utilize a <b>navegacao lateral</b> para aceder aos modulos:
-    Analise Exploratoria, Previsao de Vendas, Otimizacao Monobjetivo (O1/O2) e
+    Analise Exploratoria, Previsao de Clientes, Otimizacao Monobjetivo (O1/O2) e
     Otimizacao Multiobjetivo (O3).
 </div>
 """, unsafe_allow_html=True)

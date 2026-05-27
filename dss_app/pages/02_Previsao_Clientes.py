@@ -1,5 +1,5 @@
 """
-Previsao de Vendas — Pagina 02
+Previsao de Clientes — Pagina 02
 DSS USA Stores
 
 Ecra operacional do gestor: previsoes diarias com banda de incerteza
@@ -11,12 +11,13 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
 sys.dont_write_bytecode = True
 
 # ── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Previsao de Vendas — DSS USA Stores",
+    page_title="Previsao de Clientes — DSS USA Stores",
     page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
@@ -51,12 +52,6 @@ st.markdown("""
     font-size: 0.85rem; color: #64748B; line-height: 1.65;
     max-width: 820px; margin-bottom: 18px;
   }
-  .model-badge {
-    display: inline-block; padding: 4px 12px; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 700;
-    background: rgba(30,58,138,0.08); color: #1E3A8A;
-    letter-spacing: 0.03em;
-  }
   .insight-box {
     padding: 14px 18px; border-radius: 8px;
     border-left: 4px solid #1E3A8A; background: #F8FAFC;
@@ -72,34 +67,75 @@ st.markdown("""
 # ── Resolucao de caminhos ──────────────────────────────────────────────────
 _page_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir  = os.path.abspath(os.path.join(_page_dir, "..", ".."))
-_fc_dir    = os.path.join(_root_dir, "results", "02_Forecasting_Report")
+_fc_dir    = os.path.join(_root_dir, "results", "02_Forecasting")
 _data_dir  = os.path.join(_root_dir, "data", "processed")
 
 LOJAS = ["Baltimore", "Lancaster", "Philadelphia", "Richmond"]
 
-CENARIOS_PREF = ["C_Context_Expert", "B_Sales_Dynamics", "A_Temporal_Base"]
+# Ordem de preferencia automatica (C Expert ganha 3/4 lojas)
+CENARIOS_PREF = ["C_Context_Expert", "D_Full_Context", "B_Sales_Dynamics", "A_Temporal_Base"]
 
-DIAS_PT = {
-    0: "Domingo", 1: "Segunda", 2: "Terca", 3: "Quarta",
-    4: "Quinta", 5: "Sexta", 6: "Sabado",
+# Numero de features por cenario (para a Auditoria de Cenarios)
+CENARIO_FEATURES = {
+    "A_Temporal_Base":  6,   # calendario + 2 lags clientes
+    "B_Sales_Dynamics": 6,   # calendario + lags vendas + roll mean
+    "C_Context_Expert": 8,   # contexto negocio (holidays, promos, eventos)
+    "D_Full_Context":  18,   # todas as features sem leakage
+}
+
+# Nome legivel do cenario (para o gestor de loja)
+CENARIO_LABELS = {
+    "A_Temporal_Base":  "Base Temporal",
+    "B_Sales_Dynamics": "Dinamica de Vendas",
+    "C_Context_Expert": "Especialista de Contexto",
+    "D_Full_Context":   "Contexto Completo",
 }
 
 # ── Loaders ────────────────────────────────────────────────────────────────
 @st.cache_data
-def carregar_metricas(fc_dir: str, loja: str) -> pd.DataFrame | None:
-    path = os.path.join(fc_dir, loja, "store_metrics.csv")
-    return pd.read_csv(path) if os.path.exists(path) else None
+def carregar_metricas(fc_dir: str, loja: str, cenario: str = "") -> pd.DataFrame | None:
+    # Tenta primeiro o ficheiro do cenario activo (tem SARIMAX + Ensemble)
+    if cenario:
+        path_cenario = os.path.join(fc_dir, loja, cenario, "store_metrics.csv")
+        if os.path.exists(path_cenario):
+            return pd.read_csv(path_cenario)
+    # Fallback: ficheiro legado ao nivel da loja (pode nao ter todos os modelos)
+    path_loja = os.path.join(fc_dir, loja, "store_metrics.csv")
+    return pd.read_csv(path_loja) if os.path.exists(path_loja) else None
 
 
 @st.cache_data
-def carregar_previsoes(fc_dir: str, loja: str) -> tuple[pd.DataFrame | None, str]:
-    """Carrega forecast_values.csv do melhor cenario disponivel."""
+def carregar_previsoes_cenario(fc_dir: str, loja: str, cenario: str) -> pd.DataFrame | None:
+    """Carrega forecast_values.csv de um cenario especifico."""
+    path = os.path.join(fc_dir, loja, cenario, "forecast_values.csv")
+    if os.path.exists(path):
+        return pd.read_csv(path, parse_dates=["Date"])
+    return None
+
+
+@st.cache_data
+def carregar_todos_cenarios(fc_dir: str, loja: str) -> pd.DataFrame | None:
+    """Carrega e consolida metricas do melhor modelo de cada cenario."""
+    rows = []
     for cenario in CENARIOS_PREF:
-        path = os.path.join(fc_dir, loja, cenario, "forecast_values.csv")
-        if os.path.exists(path):
-            df = pd.read_csv(path, parse_dates=["Date"])
-            return df, cenario
-    return None, ""
+        path = os.path.join(fc_dir, loja, cenario, "store_metrics.csv")
+        if not os.path.exists(path):
+            continue
+        df = pd.read_csv(path)
+        # Melhor modelo excluindo Seasonal Naive (baseline trivial)
+        sub = df[~df["Model"].str.contains("Naive", na=False)]
+        if sub.empty:
+            continue
+        best = sub.loc[sub["MAPE"].idxmin()]
+        rows.append({
+            "Cenario":       cenario,
+            "Nº Features":   CENARIO_FEATURES.get(cenario, "?"),
+            "Melhor Modelo": best["Model"],
+            "MAPE (%)":      round(float(best["MAPE"]), 1),
+            "RMSE":          round(float(best["RMSE"]), 1),
+            "MAE":           round(float(best["MAE"]), 1),
+        })
+    return pd.DataFrame(rows) if rows else None
 
 
 @st.cache_data
@@ -134,11 +170,19 @@ st.sidebar.markdown(
 
 loja_sel = st.sidebar.selectbox("Loja", LOJAS, index=0)
 
-# carregar dados para alimentar o selector de semanas
-df_prev, cenario_ativo = carregar_previsoes(_fc_dir, loja_sel)
+# Selecao automatica do melhor cenario disponivel (transparente para o gestor)
+cenario_ativo = next(
+    (c for c in CENARIOS_PREF
+     if os.path.exists(os.path.join(_fc_dir, loja_sel, c, "forecast_values.csv"))),
+    CENARIOS_PREF[0],
+)
+
+# Carregar previsoes do melhor cenario
+df_prev = carregar_previsoes_cenario(_fc_dir, loja_sel, cenario_ativo)
 
 semana_idx = 0
 semanas_disp: list[str] = []
+semanas: list = []
 if df_prev is not None and not df_prev.empty:
     df_prev = df_prev.sort_values("Date").reset_index(drop=True)
     # agrupar em janelas de 7 dias
@@ -158,16 +202,13 @@ if df_prev is not None and not df_prev.empty:
 
 st.sidebar.markdown("---")
 st.sidebar.caption(f"Loja: {loja_sel}")
-st.sidebar.caption(f"Cenario: {cenario_ativo or 'N/A'}")
-st.sidebar.caption("Banda de incerteza: Distribuicao de Poisson")
-st.sidebar.caption("Intervalo: media +/- sqrt(procura)")
 
 # ── Cabecalho da pagina ────────────────────────────────────────────────────
 st.markdown("""
 <div style="padding: 36px 0 20px 0; border-bottom: 2px solid #1E3A8A; margin-bottom: 32px;">
     <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A;
          letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 10px;">
-        Previsao de Vendas
+        Previsao de Clientes
     </div>
     <div style="font-size: 0.88rem; color: #64748B; max-width: 760px; line-height: 1.65;">
         Ecra operacional do gestor de loja. Confronto entre valores historicos e previstos
@@ -180,7 +221,7 @@ st.markdown("""
 # ── Validacao ──────────────────────────────────────────────────────────────
 if df_prev is None or df_prev.empty:
     st.error(
-        f"Dados de previsao nao encontrados para {loja_sel}. "
+        f"Dados de previsao nao encontrados para {loja_sel} / {cenario_ativo}. "
         "Execute: `python main_pipeline.py`"
     )
     st.stop()
@@ -194,8 +235,8 @@ datas_semana = semanas[semana_idx]
 df_semana = df_prev[df_prev["Date"].dt.date.isin(datas_semana)].copy()
 df_semana = df_semana.sort_values("Date").reset_index(drop=True)
 
-# coluna de modelo vencedor: preferir Ensemble se existir, senao melhor MAPE
-df_metricas = carregar_metricas(_fc_dir, loja_sel)
+# coluna de modelo vencedor: melhor MAPE excluindo Naive
+df_metricas = carregar_metricas(_fc_dir, loja_sel, cenario_ativo)
 modelo_vencedor = melhor_modelo(df_metricas)
 
 # coluna de previsao: usar modelo vencedor se disponivel, senao qualquer coluna numerica
@@ -255,10 +296,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">Previsao Semanal — Real vs. Previsto</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="section-desc">'
-    'Comparacao entre os valores historicos de vendas (cinzento escuro) e a previsao '
+    'Comparacao entre o numero real de clientes (cinzento escuro) e a previsao '
     'do modelo vencedor (azul corporativo). A area sombreada representa o intervalo '
     'de incerteza baseado na distribuicao de Poisson: media &plusmn; &radic;(procura), '
-    'quantificando o risco de sobre ou subabastecimento.'
+    'quantificando o risco de sub ou sobredimensionamento de staff.'
     '</div>',
     unsafe_allow_html=True,
 )
@@ -310,9 +351,9 @@ if col_prev is not None and "Actual" in df_semana.columns:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                     font=dict(color="#0F172A", size=11)),
         xaxis=dict(tickfont=dict(color="#0F172A", size=11), gridcolor="#F1F5F9"),
-        yaxis=dict(title=dict(text="Vendas ($)", font=dict(color="#0F172A", size=11)),
+        yaxis=dict(title=dict(text="Nº de Clientes", font=dict(color="#0F172A", size=11)),
                    tickfont=dict(color="#0F172A", size=10), gridcolor="#F1F5F9",
-                   zeroline=False, tickformat="$,.0f"),
+                   zeroline=False, tickformat=",.0f"),
         hovermode="x unified",
     )
     st.plotly_chart(fig_fc, use_container_width=True)
@@ -334,13 +375,13 @@ if col_prev is not None and "Actual" in df_semana.columns:
     erro_abs   = np.abs(y_real_arr - y_prev_arr)
 
     df_tabela = pd.DataFrame({
-        "Dia":             df_semana["Date"].dt.strftime("%A, %d/%m").tolist(),
-        "Real ($)":        [f"${v:,.0f}" for v in y_real_arr],
-        "Previsto ($)":    [f"${v:,.0f}" for v in y_prev_arr],
-        "Incerteza (+/-)": [f"${v:,.0f}" for v in desvio],
-        "Erro Absoluto":   [f"${v:,.0f}" for v in erro_abs],
-        "FDS":             df_semana["Date"].dt.dayofweek.map(
-                               lambda d: "S" if d >= 5 else "").tolist(),
+        "Dia":                df_semana["Date"].dt.strftime("%A, %d/%m").tolist(),
+        "Real (clientes)":    [f"{v:,.0f}" for v in y_real_arr],
+        "Previsto (clientes)":[f"{v:,.0f}" for v in y_prev_arr],
+        "Incerteza (+/-)":    [f"{v:,.0f}" for v in desvio],
+        "Erro Absoluto":      [f"{v:,.0f}" for v in erro_abs],
+        "FDS":                df_semana["Date"].dt.dayofweek.map(
+                                  lambda d: "S" if d >= 5 else "").tolist(),
     })
 
     st.dataframe(df_tabela, hide_index=True, use_container_width=True)
@@ -351,14 +392,186 @@ if col_prev is not None and "Actual" in df_semana.columns:
     <div class="insight-box">
         MAPE desta semana: <strong>{mape_semana:.1f}%</strong> &nbsp;&mdash;&nbsp;
         Modelo: <strong>{col_prev}</strong> &nbsp;&mdash;&nbsp;
-        Cenario: <strong>{cenario_ativo}</strong>
+        Cenario: <strong>{CENARIO_LABELS.get(cenario_ativo, cenario_ativo)}</strong>
     </div>
     """, unsafe_allow_html=True)
+
+# ── Auditoria de Modelos ───────────────────────────────────────────────────
+st.markdown("---")
+st.markdown('<div class="section-title">Auditoria de Modelos</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="section-desc">'
+    'Comparacao completa dos 6 modelos de forecasting e do Ensemble no cenario ativo. '
+    'Permite auditar qual o modelo mais fidedigno para cada loja e validar a escolha do sistema. '
+    'MAPE: erro percentual medio. RMSE: penaliza erros grandes. Menor e sempre melhor.'
+    '</div>',
+    unsafe_allow_html=True,
+)
+
+if df_metricas is not None and not df_metricas.empty:
+    # Ordenar por MAPE crescente (melhor primeiro)
+    df_audit = df_metricas.copy().sort_values("MAPE").reset_index(drop=True)
+
+    # Formatar colunas numericas
+    df_audit_fmt = pd.DataFrame({
+        "Modelo":   df_audit["Model"],
+        "MAPE (%)": df_audit["MAPE"].round(1).astype(str) + "%",
+        "RMSE":     df_audit["RMSE"].round(1),
+        "MAE":      df_audit["MAE"].round(1),
+        "Cenario":  df_audit.get("Experiment", cenario_ativo),
+    })
+
+    # Destacar o vencedor
+    def _highlight_winner(row):
+        if row["Modelo"] == modelo_vencedor:
+            return ["background-color: #EFF6FF; font-weight: 700;"] * len(row)
+        return [""] * len(row)
+
+    st.dataframe(
+        df_audit_fmt.style.apply(_highlight_winner, axis=1),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    # Grafico de barras — MAPE por modelo
+    fig_audit = px.bar(
+        df_audit.sort_values("MAPE"),
+        x="Model", y="MAPE",
+        color="MAPE",
+        color_continuous_scale=[[0, "#1E3A8A"], [0.5, "#3B82F6"], [1, "#CBD5E1"]],
+        labels={"Model": "Modelo", "MAPE": "MAPE (%)"},
+        text=df_audit.sort_values("MAPE")["MAPE"].round(1).astype(str) + "%",
+    )
+    fig_audit.update_traces(textposition="outside")
+    fig_audit.update_layout(
+        height=320,
+        plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
+        margin=dict(t=20, b=10, l=10, r=10),
+        coloraxis_showscale=False,
+        xaxis=dict(tickfont=dict(color="#0F172A", size=10)),
+        yaxis=dict(title="MAPE (%)", tickfont=dict(color="#0F172A", size=10),
+                   gridcolor="#F1F5F9"),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_audit, use_container_width=True)
+
+    winner_row = df_audit[df_audit['Model'] == modelo_vencedor]
+    winner_mape_str = f"{winner_row.iloc[0]['MAPE']:.1f}%" if not winner_row.empty else "N/A"
+
+    if "Ensemble" in modelo_vencedor:
+        nota = "O Ensemble combina as previsoes dos Top-3 modelos por RMSE, sendo mais robusto que qualquer modelo isolado."
+    else:
+        nota = f"O {modelo_vencedor} supera o Ensemble nesta loja — as suas previsoes individuais sao suficientemente precisas."
+
+    st.markdown(f"""
+    <div class="insight-box">
+        Modelo vencedor: <strong>{modelo_vencedor}</strong>
+        &nbsp;&mdash;&nbsp; MAPE: <strong>{winner_mape_str}</strong><br>
+        {nota}
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.info("Metricas de auditoria nao disponiveis para esta loja.")
+
+# ── Auditoria de Cenarios ──────────────────────────────────────────────────
+st.markdown("---")
+st.markdown('<div class="section-title">Auditoria de Cenarios</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="section-desc">'
+    'Comparacao dos 4 cenarios de features testados. Para cada cenario mostra-se o melhor '
+    'modelo e as suas metricas de erro. Permite validar se adicionar mais features melhora '
+    'a precisao ou se o overfitting penaliza cenarios mais complexos (D vs C).'
+    '</div>',
+    unsafe_allow_html=True,
+)
+
+df_cenarios = carregar_todos_cenarios(_fc_dir, loja_sel)
+
+if df_cenarios is not None and not df_cenarios.empty:
+    # Ordenar por MAPE (igual ao grafico — elimina inconsistencia tabela vs grafico)
+    df_cenarios = df_cenarios.sort_values("MAPE (%)").reset_index(drop=True)
+    melhor_cenario = df_cenarios.iloc[0]["Cenario"]
+
+    # Usar nomes legiveis na tabela (sem underscores tecnicas)
+    df_cenarios_disp = df_cenarios.copy()
+    df_cenarios_disp["Cenario"] = df_cenarios_disp["Cenario"].map(
+        lambda c: CENARIO_LABELS.get(c, c)
+    )
+    melhor_label = CENARIO_LABELS.get(melhor_cenario, melhor_cenario)
+    ativo_label  = CENARIO_LABELS.get(cenario_ativo, cenario_ativo)
+
+    def _highlight_cenario(row):
+        if row["Cenario"] == melhor_label:
+            return ["background-color: #EFF6FF; font-weight: 700;"] * len(row)
+        if row["Cenario"] == ativo_label and ativo_label != melhor_label:
+            return ["background-color: #F0FDF4;"] * len(row)
+        return [""] * len(row)
+
+    st.dataframe(
+        df_cenarios_disp.style.apply(_highlight_cenario, axis=1),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    # Grafico de barras — MAPE por cenario (ja ordenado, nomes legiveis)
+    fig_cenarios = px.bar(
+        df_cenarios_disp,
+        x="Cenario", y="MAPE (%)",
+        color="MAPE (%)",
+        color_continuous_scale=[[0, "#1E3A8A"], [0.5, "#3B82F6"], [1, "#CBD5E1"]],
+        text=df_cenarios_disp["MAPE (%)"].astype(str) + "%",
+        labels={"Cenario": "Cenario de Features", "MAPE (%)": "MAPE (%)"},
+    )
+    fig_cenarios.update_traces(textposition="outside")
+    fig_cenarios.update_layout(
+        height=300,
+        plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
+        margin=dict(t=20, b=10, l=10, r=10),
+        coloraxis_showscale=False,
+        xaxis=dict(tickfont=dict(color="#0F172A", size=10)),
+        yaxis=dict(title="MAPE (%)", tickfont=dict(color="#0F172A", size=10),
+                   gridcolor="#F1F5F9"),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_cenarios, use_container_width=True)
+
+    # Insight dinamico: adapta a mensagem consoante qual cenario venceu
+    best_mape   = df_cenarios.iloc[0]["MAPE (%)"]
+    best_model  = df_cenarios.iloc[0]["Melhor Modelo"]
+    n_feat_best = df_cenarios.iloc[0]["Nº Features"]
+
+    mape_c = df_cenarios[df_cenarios["Cenario"] == "C_Context_Expert"]["MAPE (%)"].values
+    mape_d = df_cenarios[df_cenarios["Cenario"] == "D_Full_Context"]["MAPE (%)"].values
+    n_feat_d = CENARIO_FEATURES.get("D_Full_Context", 18)
+
+    if melhor_cenario == "D_Full_Context" and len(mape_c) > 0:
+        diff = round(float(mape_c[0]) - float(best_mape), 1)
+        insight = (
+            f'Cenario preferencial: <strong>{melhor_label}</strong> ({n_feat_best} features)'
+            f' &mdash; MAPE: <strong>{best_mape}%</strong> vs Especialista de Contexto: {mape_c[0]}%'
+            f' (melhoria de {diff}pp).<br>'
+            f'O contexto completo supera marginalmente o especialista nesta loja. '
+            f'Ainda assim, {n_feat_d} features vs 8 e um risco de overfitting em lojas com menos dados.'
+        )
+    else:
+        mape_d_val = f"{mape_d[0]}%" if len(mape_d) > 0 else "N/A"
+        insight = (
+            f'Cenario preferencial: <strong>{melhor_label}</strong> ({n_feat_best} features)'
+            f' &mdash; Melhor modelo: <strong>{best_model}</strong>'
+            f' &mdash; MAPE: <strong>{best_mape}%</strong>.<br>'
+            f'O Contexto Completo ({n_feat_d} features) obtem {mape_d_val} &mdash; pior que o'
+            f' Especialista apesar de usar o dobro das features. '
+            f'Features selecionadas por conhecimento de dominio superam a quantidade bruta.'
+        )
+
+    st.markdown(f'<div class="insight-box">{insight}</div>', unsafe_allow_html=True)
+else:
+    st.info("Dados de cenarios nao disponiveis para esta loja.")
 
 # ── Rodape ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="dss-footer">
-    DSS &nbsp;|&nbsp; Previsao de Vendas &nbsp;|&nbsp;
+    DSS &nbsp;|&nbsp; Previsao de Clientes &nbsp;|&nbsp;
     Banda de incerteza: Distribuicao de Poisson (&plusmn;&radic;procura)
 </div>
 """, unsafe_allow_html=True)
